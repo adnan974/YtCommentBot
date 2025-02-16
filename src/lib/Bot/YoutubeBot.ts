@@ -11,14 +11,16 @@ import { collectLinks } from "#utils/videos/collectLinks";
 Logger.banner("🚀 Starting YOMEN Application...");
 
 export default class YOMEN {
- 
   private page: Page;
 
   constructor(pages: Page) {
     this.page = pages;
   }
 
-  async searchKeyword(param: searchParam, sortBy: string = "relevance"): Promise<string[] | any> {
+  async searchKeyword(
+    param: searchParam,
+    sortBy: string = "relevance"
+  ): Promise<string[] | any> {
     const keyword = param;
     console.log(keyword);
     if (typeof keyword !== "string") {
@@ -47,7 +49,9 @@ export default class YOMEN {
     try {
       Logger.info(`Navigating to YouTube search results for: "${keyword}"`);
       await this.page.goto(
-        "https://www.youtube.com/results?search_query=" + encodeURIComponent(keyword) + sortOption,
+        "https://www.youtube.com/results?search_query=" +
+          encodeURIComponent(keyword) +
+          sortOption
       );
 
       Logger.info("Scrolling to the bottom of the search results page...");
@@ -64,8 +68,8 @@ export default class YOMEN {
       const convertedUrls = videoLinks.map((url) =>
         url.replace(
           /^https:\/\/www\.youtube\.com\/shorts\/([\w-]+)/,
-          "https://www.youtube.com/watch?v=$1",
-        ),
+          "https://www.youtube.com/watch?v=$1"
+        )
       );
       return convertedUrls;
     } catch (error) {
@@ -74,28 +78,27 @@ export default class YOMEN {
   }
 
   async getTrendingVideos(): Promise<string[] | any> {
-   await this.page.goto("https://www.youtube.com/feed/trending");
-   Logger.info("Scrolling to the bottom of the search results page...");
-      await scrollToBottom(this.page);
+    await this.page.goto("https://www.youtube.com/feed/trending");
+    Logger.info("Scrolling to the bottom of the search results page...");
+    await scrollToBottom(this.page);
 
-      Logger.info("Waiting for video results to load...");
-      await this.page.waitForSelector("ytd-video-renderer");
+    Logger.info("Waiting for video results to load...");
+    await this.page.waitForSelector("ytd-video-renderer");
 
-      Logger.info("Collecting video links...");
-      const videoLinks: string[] = await collectLinks(this.page);
+    Logger.info("Collecting video links...");
+    const videoLinks: string[] = await collectLinks(this.page);
 
-      Logger.success(`Collected ${videoLinks.length} video links.`);
+    Logger.success(`Collected ${videoLinks.length} video links.`);
 
-      const convertedUrls = videoLinks.map((url) =>
-        url.replace(
-          /^https:\/\/www\.youtube\.com\/shorts\/([\w-]+)/,
-          "https://www.youtube.com/watch?v=$1",
-        ),
-      );
-      return convertedUrls;
-}
+    const convertedUrls = videoLinks.map((url) =>
+      url.replace(
+        /^https:\/\/www\.youtube\.com\/shorts\/([\w-]+)/,
+        "https://www.youtube.com/watch?v=$1"
+      )
+    );
+    return convertedUrls;
+  }
 
-  
   async collectAllComments(): Promise<string[]> {
     Logger.info("Starting to collect comments from the video...");
     return await this.page.evaluate(() => {
@@ -112,7 +115,7 @@ export default class YOMEN {
 
           document
             .querySelectorAll(
-              "span.yt-core-attributed-string.yt-core-attributed-string--white-space-pre-wrap",
+              "span.yt-core-attributed-string.yt-core-attributed-string--white-space-pre-wrap"
             )
             .forEach((comment) => {
               if (comment && comment.textContent) {
@@ -136,8 +139,11 @@ export default class YOMEN {
     });
   }
 
- 
-  async goToVideo(videoLink: string, commentType = "random", manual = "false"): Promise<void> {
+  async goToVideo(
+    videoLink: string,
+    commentType = "random",
+    manual = "false"
+  ): Promise<void> {
     try {
       console.log(videoLink, commentType, manual);
       const exist = await CommentDB.findOne({
@@ -161,9 +167,9 @@ export default class YOMEN {
         case "ai":
           await this.aiComment(videoLink);
           break;
-          case "copy":
-            await this.randomComment(videoLink);
-            break;
+        case "copy":
+          await this.randomComment(videoLink);
+          break;
         case "direct":
           await this.directComment(videoLink, manual);
           break;
@@ -171,7 +177,7 @@ export default class YOMEN {
           await this.randomComment(videoLink);
           break;
       }
-   
+
       await delay(5000);
     } catch (e) {
       await CommentDB.create({
@@ -179,48 +185,71 @@ export default class YOMEN {
         video_url: videoLink,
         comment_status: "failed",
         comment: (e as Error).message,
-      })
-      Logger.error(`Failed to interact with the video: ${(e as Error).message}`);
+      });
+      Logger.error(
+        `Failed to interact with the video: ${(e as Error).message}`
+      );
     }
   }
 
-
   async directComment(videoLink: string, comments) {
     console.log(comments);
+
+    Logger.info("Placing the view on the comments section...");
+
+    // Attendre que la page soit complètement chargée
+    await this.page.waitForSelector("#comments", {
+      visible: true,
+      timeout: 60000,
+    });
+
+    await this.page.evaluate(() => {
+      const commentsSection = document.querySelector("#comments");
+      if (commentsSection) {
+        const rect = commentsSection.getBoundingClientRect();
+        window.scrollTo({
+          top: window.scrollY + rect.top - 100,
+          left: 0,
+          behavior: "instant",
+        });
+      }
+    });
+
     await this.page.waitForSelector("#simple-box", {
       visible: true,
-      timeout: randomNumber(5000, 10000),
+      timeout: 60_000,
     });
+    
     await this.page.evaluate(() => {
       const commentBox = document.querySelector("#simple-box");
       if (commentBox) {
         commentBox.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     });
- 
-    await this.page.waitForSelector("#contenteditable-root", {
+
+    await this.page.waitForSelector("#placeholder-area", {
       visible: true,
       timeout: randomNumber(5000, 10000),
     });
-    await this.page.click("#contenteditable-root");
-    await this.page.type("#contenteditable-root",comments );
+    await this.page.click("#placeholder-area");
+    await this.page.type("#placeholder-area", comments);
 
     Logger.info("Submitting the comment...");
     await this.page.keyboard.press("Enter");
 
     Logger.success("Comment posted successfully!");
     await this.page.click(
-      "#submit-button > yt-button-shape > button > yt-touch-feedback-shape > div",
+      "#submit-button > yt-button-shape > button > yt-touch-feedback-shape > div"
     );
     await CommentDB.create({
       username: getEnv("USERNAME"),
       video_url: videoLink,
-      comment_status: "failed",
+      comment_status: "sucess",
       comment: comments,
-    })
+    });
   }
 
-  async randomComment(videoLink){
+  async randomComment(videoLink) {
     Logger.info("Collecting all comments from the video...");
     const comments = await this.collectAllComments();
 
@@ -231,8 +260,7 @@ export default class YOMEN {
 
     Logger.success(`Collected ${comments.length} comments.`);
 
-    const randomComment =
-      comments[Math.floor(Math.random() * comments.length)];
+    const randomComment = comments[Math.floor(Math.random() * comments.length)];
     Logger.info(`Random comment selected: "${randomComment}"`);
 
     Logger.info("Scrolling to the comment input box...");
@@ -268,7 +296,7 @@ export default class YOMEN {
 
     Logger.success("Comment posted successfully!");
     await this.page.click(
-      "#submit-button > yt-button-shape > button > yt-touch-feedback-shape > div",
+      "#submit-button > yt-button-shape > button > yt-touch-feedback-shape > div"
     );
 
     await CommentDB.create({
@@ -279,7 +307,7 @@ export default class YOMEN {
     });
   }
 
-  async aiComment(videoLink){
+  async aiComment(videoLink) {
     Logger.info("Collecting all comments from the video...");
     const comments = await this.collectAllComments();
 

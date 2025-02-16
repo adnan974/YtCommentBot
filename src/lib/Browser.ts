@@ -19,7 +19,7 @@ export class LaunchBrowser {
      * Initialize the browser with undetectable settings and a specific user session.
      */
     async init(): Promise<void> {
-        const driverPath = path.resolve("driver");
+        const driverPath = path.resolve("/usr/bin/");
         const sessionDir = path.resolve(`session/${this.username}`);
         if (!fs.existsSync(sessionDir)) {
             fs.mkdirSync(sessionDir, { recursive: true });
@@ -32,7 +32,7 @@ export class LaunchBrowser {
         const UndetectableBMS = new UndetectableBrowser(
             await puppeteer.launch({ 
                 headless: false,
-                executablePath: path.join(driverPath, "chrome.exe"),
+                executablePath: path.join(driverPath, "google-chrome-stable"),
                 userDataDir: `session/${this.username}`,
                 args: [
                     '--no-sandbox',
@@ -57,7 +57,21 @@ export class LaunchBrowser {
 
         this.browser = await UndetectableBMS.getBrowser();
         this.page = await this.browser.newPage();
-        await this.page.setViewport({ width: 1375, height: 3812 });
+
+        // blocage des médias pour ne pas charger les vidéos
+        await this.page.setRequestInterception(true);
+
+        this.page.on('request', (request) => {
+          if (request.resourceType() === 'media') {
+            // Bloquer les requêtes médias (vidéos/audio)
+            request.abort();
+          } else {
+            request.continue();
+          }
+        });
+
+        
+        //await this.page.setViewport({ width: 1375, height: 3812 });
         await this.page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
         setEnv(`SESSION_DIR_${this.username}`, `session/${this.username}`);
     }

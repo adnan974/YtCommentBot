@@ -79,12 +79,12 @@ async function main() {
     Logger.divider();
  
     const preferences = await getSearchPreferences();
-    const browser = new LaunchBrowser(getEnv('USERNAME'));
+    const browser = new LaunchBrowser(getEnv("USERNAME"));
     await browser.init();
 
     const pages = await browser.page;
     const login = new LoginYoutube(pages);
-    if(!login) await login.login();
+    await login.login();
    
     const yomen = new YOMEN(pages);
 

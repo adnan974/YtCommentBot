@@ -4,7 +4,7 @@ export default async function scrollToBottom(pages,attempts = 10, maxAttempts = 
         await new Promise<void>((resolve) => {
             let lastScrollHeight = document.body.scrollHeight;
             let attempts = 10;
-            const maxAttempts = 30;
+            const maxAttempts = 200;
             const interval = 500; 
 
             const timer = setInterval(() => {
