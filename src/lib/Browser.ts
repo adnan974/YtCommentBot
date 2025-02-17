@@ -62,12 +62,22 @@ export class LaunchBrowser {
         await this.page.setRequestInterception(true);
 
         this.page.on('request', (request) => {
-          if (request.resourceType() === 'media') {
-            // Bloquer les requêtes médias (vidéos/audio)
-            request.abort();
-          } else {
-            request.continue();
-          }
+            const url = request.url().toLowerCase();
+            const resourceType = request.resourceType();
+
+            if (
+                url.endsWith('.mp4') ||
+                url.endsWith('.avi') ||
+                url.endsWith('.flv') ||
+                url.endsWith('.mov') ||
+                url.endsWith('.wmv') ||
+                url.includes('googlevideo') || // Bloque les vidéos YouTube
+                url.includes('ytimg') // Bloque les miniatures et images YouTube
+            ) {
+                request.abort();
+            } else {
+                request.continue();
+            }
         });
 
         

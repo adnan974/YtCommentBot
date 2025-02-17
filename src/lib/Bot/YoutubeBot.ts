@@ -7,6 +7,9 @@ import { CommentDB } from "models";
 import type { Page } from "puppeteer";
 import type { searchParam } from "#types/index";
 import { collectLinks } from "#utils/videos/collectLinks";
+import fs from "fs";
+import path from "path";
+import csvParser from "csv-parser";
 
 Logger.banner("🚀 Starting YOMEN Application...");
 
@@ -160,6 +163,7 @@ export default class YOMEN {
 
       Logger.info(`Navigating to video page: ${videoLink}`);
       await this.page.goto(videoLink);
+      //TODO : AJouter un compotement humain : rester un peu sur la page, bopuger la souris, s'abonner, aimer de maniere aléatoire etc..
       switch (commentType) {
         case "random":
           await this.randomComment(videoLink);
@@ -169,6 +173,9 @@ export default class YOMEN {
           break;
         case "copy":
           await this.randomComment(videoLink);
+          break;
+        case "csv":
+          await this.csvComment(videoLink, "./comments.csv");
           break;
         case "direct":
           await this.directComment(videoLink, manual);
@@ -219,7 +226,7 @@ export default class YOMEN {
       visible: true,
       timeout: 60_000,
     });
-    
+
     await this.page.evaluate(() => {
       const commentBox = document.querySelector("#simple-box");
       if (commentBox) {
@@ -247,6 +254,119 @@ export default class YOMEN {
       comment_status: "sucess",
       comment: comments,
     });
+  }
+
+  // Fonction pour lire les commentaires à partir d'un fichier CSV
+  async readCommentsFromCSV(filePath: string): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      const comments: string[] = [];
+      const absolutePath = path.resolve(filePath);
+  
+      // Vérifie si le fichier existe
+      if (!fs.existsSync(absolutePath)) {
+        return reject(new Error(`File not found: ${absolutePath}`));
+      }
+  
+      // Lecture du fichier CSV avec un délimiteur ";"
+      fs.createReadStream(absolutePath)
+        .pipe(
+          csvParser({
+            separator: ';', // Délimiteur de colonnes
+            headers: false,   // Utiliser la première ligne comme en-tête
+          })
+        )
+        .on('data', (row) => {
+          const comment = row[0];
+          if (comment) { 
+            comments.push(comment);
+          }
+        })
+        .on('end', () => {
+          resolve(comments);
+        })
+        .on('error', (error) => {
+          reject(error);
+        });
+    });
+  }
+  
+
+  async csvComment(videoLink: string, filePath: string) {
+    try {
+      Logger.info(`Reading comments from CSV: ${filePath}`);
+      const comments = await this.readCommentsFromCSV(filePath);
+
+      if (comments.length === 0) {
+        Logger.warn("No comments found in the CSV file.");
+        return;
+      }
+
+      // Sélection aléatoire d'un commentaire
+      const randomComment =
+        comments[Math.floor(Math.random() * comments.length)];
+      Logger.info(`Random comment selected from CSV: "${randomComment}"`);
+
+      Logger.info("Placing the view on the comments section...");
+
+      // Attendre que la page soit complètement chargée
+      await this.page.waitForSelector("#comments", {
+        visible: true,
+        timeout: 60000,
+      });
+
+      await this.page.evaluate(() => {
+        const commentsSection = document.querySelector("#comments");
+        if (commentsSection) {
+          const rect = commentsSection.getBoundingClientRect();
+          window.scrollTo({
+            top: window.scrollY + rect.top - 100,
+            left: 0,
+            behavior: "instant",
+          });
+        }
+      });
+
+      await this.page.waitForSelector("#simple-box", {
+        visible: true,
+        timeout: 60000,
+      });
+
+      await this.page.evaluate(() => {
+        const commentBox = document.querySelector("#simple-box");
+        if (commentBox) {
+          commentBox.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+
+      await this.page.waitForSelector("#placeholder-area", {
+        visible: true,
+        timeout: await randomNumber(5000, 10000),
+      });
+
+      // Cliquer sur la zone de saisie du commentaire
+      await this.page.click("#placeholder-area");
+
+      // Saisir le commentaire
+      await this.page.type("#placeholder-area", randomComment);
+
+      Logger.info("Submitting the comment...");
+      await this.page.keyboard.press("Enter");
+
+      await this.page.click(
+        "#submit-button > yt-button-shape > button > yt-touch-feedback-shape > div"
+      );
+      Logger.success("Comment posted successfully!");
+
+      // Optionnel : enregistrer le commentaire en base
+      await CommentDB.create({
+        username: getEnv("USERNAME"),
+        video_url: videoLink,
+        comment_status: "success",
+        comment: randomComment,
+      });
+    } catch (error) {
+      Logger.error(`Failed to post a CSV comment: ${(error as Error).message}`);
+    }
   }
 
   async randomComment(videoLink) {
