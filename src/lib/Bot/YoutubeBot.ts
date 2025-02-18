@@ -1,15 +1,14 @@
 import { getEnv } from "#config/index";
 import { delay } from "#utils/delay";
 import Logger from "#utils/Logger";
-import { randomDelay, randomNumber } from "#utils/randomDelay";
+import { randomNumber } from "#utils/randomDelay";
 import scrollToBottom from "#utils/scrollToBottom";
 import { CommentDB } from "models";
 import type { Page } from "puppeteer";
 import type { searchParam } from "#types/index";
 import { collectLinks } from "#utils/videos/collectLinks";
-import fs from "fs";
-import path from "path";
-import csvParser from "csv-parser";
+import { ICommentStrategy } from "./comments/ICommentStrategy";
+import { CommentStrategyFactory } from "./comments/CommentStrategyFactory";
 
 Logger.banner("🚀 Starting YOMEN Application...");
 
@@ -142,13 +141,137 @@ export default class YOMEN {
     });
   }
 
+  //TODO: A revoir, il semble que la vidéo prennent plutot la durée de l'annonce et non la vidéo
+  async watchVideo(): Promise<void> {
+    // Attendre que la balise vidéo apparaisse
+    await this.page.waitForSelector("video", { visible: true });
+
+    // Récupérer la durée de la vidéo via la balise <video>
+    const videoDuration = await this.page.evaluate(() => {
+      const videoElement = document.querySelector("video");
+      return videoElement ? Math.floor(videoElement.duration) : 0;
+    });
+
+    // Vérifier si la durée a bien été récupérée
+    if (videoDuration > 0) {
+      Logger.info(`Video duration: ${videoDuration} seconds`);
+      Logger.info(`Watching the video for ${videoDuration} seconds...`);
+
+      // Attendre la durée complète de la vidéo
+      await delay(videoDuration * 1000);
+    } else {
+      Logger.warn(
+        "Could not get video duration. Watching for a default 30 seconds..."
+      );
+      await delay(30 * 1000); // Durée par défaut si la récupération échoue
+    }
+  }
+
+  async stayOnPageAndMoveMouse(): Promise<void> {
+    // Générer une durée aléatoire entre 40 et 60 secondes
+    const stayDuration = Math.floor(Math.random() * (60 - 40 + 1)) + 40;
+    Logger.info(`Staying on the page for ${stayDuration} seconds...`);
+
+    const endTime = Date.now() + stayDuration * 1000;
+
+    // Bouger la souris aléatoirement tant que la durée n'est pas écoulée
+    while (Date.now() < endTime) {
+      // Obtenir des coordonnées aléatoires sur la page
+      const x = Math.floor(Math.random() * 800) + 100; // Coordonnées X entre 100 et 900
+      const y = Math.floor(Math.random() * 500) + 100; // Coordonnées Y entre 100 et 600
+
+      // Déplacer la souris
+      await this.page.mouse.move(x, y);
+      Logger.info(`Mouse moved to (${x}, ${y})`);
+
+      // Attendre entre 2 et 5 secondes avant le prochain mouvement
+      await delay(Math.floor(Math.random() * (5000 - 2000 + 1)) + 2000);
+    }
+
+    Logger.info("Finished staying on the page.");
+  }
+
+  async randomVideoInteraction(): Promise<void> {
+    await delay(randomNumber(1000, 2000));
+
+    const shouldLike = Math.random() < 0.3; // 100% de chances d'aimer (ajuste si besoin)
+    const shouldSubscribe = Math.random() < 0.1; // 100% de chances de s'abonner (ajuste si besoin)
+
+    if (shouldLike) {
+      Logger.info("Liking the video...");
+      // Attendre que le bouton J'aime apparaisse
+      await this.page.waitForSelector(
+        'button.yt-spec-button-shape-next[aria-pressed="false"]',
+        { visible: true }
+      );
+      // Cliquer sur le bouton J'aime
+      await this.page.click(
+        'button.yt-spec-button-shape-next[aria-pressed="false"]'
+      );
+      await delay(randomNumber(1000, 2000));
+    }
+
+    if (shouldSubscribe) {
+      Logger.info("Subscribing to the channel...");
+      // Attendre que le bouton S'abonner apparaisse
+      await this.page.waitForSelector(
+        "yt-button-shape#subscribe-button-shape button.yt-spec-button-shape-next",
+        { visible: true }
+      );
+
+      // Cliquer sur le bouton S'abonner
+      await this.page.click(
+        "yt-button-shape#subscribe-button-shape button.yt-spec-button-shape-next"
+      );
+    }
+  }
+
+  async browseComments(): Promise<void> {
+    Logger.info("Browsing the comments...");
+
+    // Scroll vers la section des commentaires
+    await this.page.evaluate(() => {
+      const commentsSection = document.querySelector("#comments");
+      if (commentsSection) {
+        commentsSection.scrollIntoView({ behavior: "smooth" });
+      }
+    });
+
+    // Pause aléatoire
+    await delay(randomNumber(3000, 6000));
+
+    // Scroll lentement dans les commentaires
+    const scrollTimes = randomNumber(2, 5);
+    for (let i = 0; i < scrollTimes; i++) {
+      await this.page.evaluate(() => {
+        window.scrollBy(0, window.innerHeight / 2);
+      });
+      await delay(randomNumber(2000, 5000));
+    }
+  }
+
+  async moveMouseRandomly(): Promise<void> {
+    Logger.info("Moving the mouse randomly...");
+
+    const x = randomNumber(100, 500);
+    const y = randomNumber(100, 500);
+
+    await this.page.mouse.move(x, y);
+    await delay(randomNumber(1000, 2000));
+
+    await this.page.mouse.move(x + 50, y + 50);
+    await delay(randomNumber(1000, 2000));
+  }
+
   async goToVideo(
     videoLink: string,
     commentType = "random",
-    manual = "false"
+    manual: string | undefined = undefined
   ): Promise<void> {
     try {
       console.log(videoLink, commentType, manual);
+
+      // Vérifier si le commentaire existe déjà
       const exist = await CommentDB.findOne({
         where: {
           username: getEnv("USERNAME"),
@@ -163,277 +286,45 @@ export default class YOMEN {
 
       Logger.info(`Navigating to video page: ${videoLink}`);
       await this.page.goto(videoLink);
-      //TODO : AJouter un compotement humain : rester un peu sur la page, bopuger la souris, s'abonner, aimer de maniere aléatoire etc..
-      switch (commentType) {
-        case "random":
-          await this.randomComment(videoLink);
-          break;
-        case "ai":
-          await this.aiComment(videoLink);
-          break;
-        case "copy":
-          await this.randomComment(videoLink);
-          break;
-        case "csv":
-          await this.csvComment(videoLink, "./comments.csv");
-          break;
-        case "direct":
-          await this.directComment(videoLink, manual);
-          break;
-        default:
-          await this.randomComment(videoLink);
-          break;
+
+      // Attendre que la vidéo charge et simuler le visionnage
+
+      await this.stayOnPageAndMoveMouse(); // Regarde la vidéo entre 15 et 60 secondes
+      await this.randomVideoInteraction(); // Like/Subscribe aléatoire
+      //TODO: Revoir le code
+      //await this.browseComments(); // Parcours des commentaires
+      await this.moveMouseRandomly(); // Déplace la souris
+
+      // Instancier la bonne stratégie de commentaire
+      let commentStrategy: ICommentStrategy;
+
+      try {
+        commentStrategy = CommentStrategyFactory.create(commentType, {
+          comment: manual,
+          filePath: "./comments.csv",
+        });
+      } catch (e) {
+        Logger.error(
+          `Failed to create comment strategy: ${(e as Error).message}`
+        );
+        return;
       }
 
+      // Utiliser la stratégie pour poster le commentaire
+      await commentStrategy.postComment(videoLink, this.page);
+
+      // Ajouter un délai pour simuler un comportement humain
       await delay(5000);
     } catch (e) {
+      Logger.error(
+        `Failed to interact with the video: ${(e as Error).message}`
+      );
       await CommentDB.create({
         username: getEnv("USERNAME"),
         video_url: videoLink,
         comment_status: "failed",
         comment: (e as Error).message,
       });
-      Logger.error(
-        `Failed to interact with the video: ${(e as Error).message}`
-      );
-    }
-  }
-
-  async directComment(videoLink: string, comments) {
-    console.log(comments);
-
-    Logger.info("Placing the view on the comments section...");
-
-    // Attendre que la page soit complètement chargée
-    await this.page.waitForSelector("#comments", {
-      visible: true,
-      timeout: 60000,
-    });
-
-    await this.page.evaluate(() => {
-      const commentsSection = document.querySelector("#comments");
-      if (commentsSection) {
-        const rect = commentsSection.getBoundingClientRect();
-        window.scrollTo({
-          top: window.scrollY + rect.top - 100,
-          left: 0,
-          behavior: "instant",
-        });
-      }
-    });
-
-    await this.page.waitForSelector("#simple-box", {
-      visible: true,
-      timeout: 60_000,
-    });
-
-    await this.page.evaluate(() => {
-      const commentBox = document.querySelector("#simple-box");
-      if (commentBox) {
-        commentBox.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    });
-
-    await this.page.waitForSelector("#placeholder-area", {
-      visible: true,
-      timeout: randomNumber(5000, 10000),
-    });
-    await this.page.click("#placeholder-area");
-    await this.page.type("#placeholder-area", comments);
-
-    Logger.info("Submitting the comment...");
-    await this.page.keyboard.press("Enter");
-
-    Logger.success("Comment posted successfully!");
-    await this.page.click(
-      "#submit-button > yt-button-shape > button > yt-touch-feedback-shape > div"
-    );
-    await CommentDB.create({
-      username: getEnv("USERNAME"),
-      video_url: videoLink,
-      comment_status: "sucess",
-      comment: comments,
-    });
-  }
-
-  // Fonction pour lire les commentaires à partir d'un fichier CSV
-  async readCommentsFromCSV(filePath: string): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-      const comments: string[] = [];
-      const absolutePath = path.resolve(filePath);
-  
-      // Vérifie si le fichier existe
-      if (!fs.existsSync(absolutePath)) {
-        return reject(new Error(`File not found: ${absolutePath}`));
-      }
-  
-      // Lecture du fichier CSV avec un délimiteur ";"
-      fs.createReadStream(absolutePath)
-        .pipe(
-          csvParser({
-            separator: ';', // Délimiteur de colonnes
-            headers: false,   // Utiliser la première ligne comme en-tête
-          })
-        )
-        .on('data', (row) => {
-          const comment = row[0];
-          if (comment) { 
-            comments.push(comment);
-          }
-        })
-        .on('end', () => {
-          resolve(comments);
-        })
-        .on('error', (error) => {
-          reject(error);
-        });
-    });
-  }
-  
-
-  async csvComment(videoLink: string, filePath: string) {
-    try {
-      Logger.info(`Reading comments from CSV: ${filePath}`);
-      const comments = await this.readCommentsFromCSV(filePath);
-
-      if (comments.length === 0) {
-        Logger.warn("No comments found in the CSV file.");
-        return;
-      }
-
-      // Sélection aléatoire d'un commentaire
-      const randomComment =
-        comments[Math.floor(Math.random() * comments.length)];
-      Logger.info(`Random comment selected from CSV: "${randomComment}"`);
-
-      Logger.info("Placing the view on the comments section...");
-
-      // Attendre que la page soit complètement chargée
-      await this.page.waitForSelector("#comments", {
-        visible: true,
-        timeout: 60000,
-      });
-
-      await this.page.evaluate(() => {
-        const commentsSection = document.querySelector("#comments");
-        if (commentsSection) {
-          const rect = commentsSection.getBoundingClientRect();
-          window.scrollTo({
-            top: window.scrollY + rect.top - 100,
-            left: 0,
-            behavior: "instant",
-          });
-        }
-      });
-
-      await this.page.waitForSelector("#simple-box", {
-        visible: true,
-        timeout: 60000,
-      });
-
-      await this.page.evaluate(() => {
-        const commentBox = document.querySelector("#simple-box");
-        if (commentBox) {
-          commentBox.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      });
-
-      await this.page.waitForSelector("#placeholder-area", {
-        visible: true,
-        timeout: await randomNumber(5000, 10000),
-      });
-
-      // Cliquer sur la zone de saisie du commentaire
-      await this.page.click("#placeholder-area");
-
-      // Saisir le commentaire
-      await this.page.type("#placeholder-area", randomComment);
-
-      Logger.info("Submitting the comment...");
-      await this.page.keyboard.press("Enter");
-
-      await this.page.click(
-        "#submit-button > yt-button-shape > button > yt-touch-feedback-shape > div"
-      );
-      Logger.success("Comment posted successfully!");
-
-      // Optionnel : enregistrer le commentaire en base
-      await CommentDB.create({
-        username: getEnv("USERNAME"),
-        video_url: videoLink,
-        comment_status: "success",
-        comment: randomComment,
-      });
-    } catch (error) {
-      Logger.error(`Failed to post a CSV comment: ${(error as Error).message}`);
-    }
-  }
-
-  async randomComment(videoLink) {
-    Logger.info("Collecting all comments from the video...");
-    const comments = await this.collectAllComments();
-
-    if (comments.length === 0) {
-      Logger.warn("No comments found on this video.");
-      return;
-    }
-
-    Logger.success(`Collected ${comments.length} comments.`);
-
-    const randomComment = comments[Math.floor(Math.random() * comments.length)];
-    Logger.info(`Random comment selected: "${randomComment}"`);
-
-    Logger.info("Scrolling to the comment input box...");
-    await this.page.waitForSelector("#simple-box", {
-      visible: true,
-      timeout: await randomNumber(5000, 10000),
-    });
-    await this.page.evaluate(() => {
-      const commentBox = document.querySelector("#simple-box");
-      if (commentBox) {
-        commentBox.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    });
-
-    Logger.info("Clicking on the comment box...");
-    await this.page.waitForSelector("#placeholder-area", {
-      visible: true,
-      timeout: await randomNumber(5000, 10000),
-    });
-    await this.page.click("#placeholder-area");
-
-    Logger.info("Waiting for the text input box to be ready...");
-    await this.page.waitForSelector("#contenteditable-root", {
-      visible: true,
-      timeout: await randomNumber(5000, 10000),
-    });
-
-    Logger.info("Typing the selected random comment...");
-    await this.page.type("#contenteditable-root", randomComment);
-
-    Logger.info("Submitting the comment...");
-    await this.page.keyboard.press("Enter");
-
-    Logger.success("Comment posted successfully!");
-    await this.page.click(
-      "#submit-button > yt-button-shape > button > yt-touch-feedback-shape > div"
-    );
-
-    await CommentDB.create({
-      username: getEnv("USERNAME"),
-      video_url: videoLink,
-      comment_status: "success",
-      comment: randomComment,
-    });
-  }
-
-  async aiComment(videoLink) {
-    Logger.info("Collecting all comments from the video...");
-    const comments = await this.collectAllComments();
-
-    if (comments.length === 0) {
-      Logger.warn("No comments found on this video.");
-      return;
     }
   }
 }

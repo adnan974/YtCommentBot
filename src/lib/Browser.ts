@@ -51,6 +51,7 @@ export class LaunchBrowser {
                     '--no-zygote-forced',
                     '--no-zygote-forced-for-chrome',
                     '--disable-web-security',
+                    '--incognito',
                 ],
             })
         );
