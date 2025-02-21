@@ -3,6 +3,7 @@ import path from "path";
 import UndetectableBrowser from "undetected-browser";
 import puppeteer, { Browser, Page } from "puppeteer";
 import { setEnv } from "#config/index";
+import { UserAgent } from "constants/UserAgents";
 
 export class LaunchBrowser {
     public browser: Browser | null;
@@ -51,7 +52,6 @@ export class LaunchBrowser {
                     '--no-zygote-forced',
                     '--no-zygote-forced-for-chrome',
                     '--disable-web-security',
-                    '--incognito',
                 ],
             })
         );
@@ -83,7 +83,7 @@ export class LaunchBrowser {
 
         
         //await this.page.setViewport({ width: 1375, height: 3812 });
-        await this.page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
+        await this.page.setUserAgent(UserAgent.Chrome105);
         setEnv(`SESSION_DIR_${this.username}`, `session/${this.username}`);
     }
 

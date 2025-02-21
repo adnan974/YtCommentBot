@@ -1,9 +1,7 @@
-import { getEnv } from "#config/index";
 import { delay } from "#utils/delay";
 import Logger from "#utils/Logger";
 import { randomDelay,randomNumber } from "#utils/randomDelay";
-import { SessionDB } from "models";
-
+import store from "store/store";
 
 export default class LoginYoutube {
     page: any;
@@ -36,7 +34,6 @@ export default class LoginYoutube {
                 }, { timeout: 5000 });
     
                 Logger.success('Already logged in.');
-                await SessionDB.upsert({ username: getEnv('USERNAME'), sessionDir: getEnv('SESSION_DIR_'+getEnv('USERNAME')), login_status: 'success' });
     
                 return true;
             } catch (error) {
@@ -47,12 +44,14 @@ export default class LoginYoutube {
             Logger.info('Navigating to Google Login Page...');
             await this.page.goto("https://accounts.google.com/v3/signin/identifier?continue=https%3A%2F%2Fmyaccount.google.com%2Fintro%2Fpersonal-info%3Fpli%3D1&ec=GAZAwAE&followup=https%3A%2F%2Fmyaccount.google.com%2Fintro%2Fpersonal-info%3Fpli%3D1&ifkv=ASSHykrC6ErrKuH9CXbLDHX-WG8T9b89EPZ-kzi5Z6YXpuyjFseEKzGc3maSFu4LeGdNShuKSVim2A&osid=1&passive=1209600&service=accountsettings&flowName=GlifWebSignIn&flowEntry=ServiceLogin&dsh=S-801714618%3A1739727816564016&ddm=1");
 
+            // ✅ Get bot data
+            const botData = store.getBotData();
     
             // ✅ Enter Username
             Logger.info('Typing username...');
             const usernameSelector = '#identifierId';
             await this.page.waitForSelector(usernameSelector, { visible: true, timeout: 10000 });
-            await this.page.type(usernameSelector, getEnv('USERNAME_GOOGLE'), { delay: randomNumber(100, 300) });
+            await this.page.type(usernameSelector, botData.google_account.email, { delay: randomNumber(100, 300) });
             await this.page.keyboard.press('Enter');
             await randomDelay(1000, 2000);
     
@@ -60,7 +59,7 @@ export default class LoginYoutube {
             Logger.info('Typing password...');
             const passwordSelector = 'input[type="password"]';
             await this.page.waitForSelector(passwordSelector, { visible: true, timeout: 10000 });
-            await this.page.type(passwordSelector, getEnv('PASSWORD_GOOGLE'), { delay: randomNumber(100, 300) });
+            await this.page.type(passwordSelector, botData.google_account.password, { delay: randomNumber(100, 300) });
             await this.page.keyboard.press('Enter');
             await this.page.waitForNavigation({ waitUntil: 'networkidle0' });
     
@@ -87,7 +86,6 @@ export default class LoginYoutube {
             }, { timeout: 5000 });
     
             Logger.success('Login successful! Redirecting to dashboard...');
-            await SessionDB.upsert({ username: getEnv('USERNAME'), sessionDir: getEnv('SESSION_DIR_'+getEnv('USERNAME')), login_status: 'success' });
     
         } catch (error) {
             Logger.error(`Unexpected error during login: ${error.message}`);

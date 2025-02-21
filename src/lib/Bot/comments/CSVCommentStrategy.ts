@@ -6,6 +6,7 @@ import { CommentDB } from "models";
 import { ICommentStrategy } from "./ICommentStrategy";
 import { Page } from "puppeteer";
 import { getEnv } from "#config/index";
+import store from "store/store";
 
 export class CSVCommentStrategy implements ICommentStrategy {
   private filePath: string;
@@ -103,7 +104,7 @@ export class CSVCommentStrategy implements ICommentStrategy {
       Logger.success("Comment posted successfully!");
 
       await CommentDB.create({
-        username: getEnv("USERNAME"),
+        username: store.getBotData().username,
         video_url: videoLink,
         comment_status: "success",
         comment: randomComment,

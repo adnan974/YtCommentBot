@@ -4,88 +4,31 @@ import LoginYoutube from "#lib/LoginYoutube";
 import Logger from "#utils/Logger";
 import { banner } from "#utils/banner";
 import { randomDelay } from "#utils/randomDelay";
-import inquirer from "inquirer";
 import { getEnv } from "./config";
 
-import { initialize } from "models";
+import { BotDB, GoogleAccountDB, initialize } from "models";
 import Downloader from "#utils/net";
 import fs from "fs";
-import path from "path";
 import YOMEN from "#lib/Bot/YoutubeBot";
-
-async function getSearchPreferences() {
-  return inquirer.prompt([
-    {
-      type: "list",
-      name: "searchType",
-      message: "🔍 How would you like to discover videos?",
-      choices: [
-        { name: "🔎 Search by keyword", value: "keyword" },
-        { name: "🔥 Browse trending page", value: "trending" },
-      ],
-      default: "keyword",
-    },
-    {
-      type: "input",
-      name: "keyword",
-      message: "✨ Enter your search keyword:",
-      when: (answers) => answers.searchType === "keyword",
-      validate: (input: string) =>
-        input.trim() ? true : "❌ Keyword cannot be empty",
-      default: "test",
-    },
-    {
-      type: "list",
-      name: "sortBy",
-      message: "📊 How should we sort the results?",
-      when: (answers) => answers.searchType === "keyword",
-      choices: [
-        { name: "🆕 Newest first", value: "date" },
-        { name: "🌟 Most popular", value: "viewCount" },
-        { name: "🎯 Most relevant", value: "relevance" },
-      ],
-      default: "date",
-    },
-    {
-      type: "list",
-      name: "commentType",
-      message: "💭 How would you like to comment?",
-      choices: [
-        { name: "🤖 Generate AI comments", value: "ai" },
-        { name: "📝 Copy Comments From Comments", value: "copy" },
-        { name: "✍️  Manual comments", value: "manual" },
-      ],
-      default: "manual",
-    },
-    {
-      type: "list",
-      name: "manualCommentType",
-      message: "📝 Choose your comment source:",
-      when: (answers) => answers.commentType === "manual",
-      choices: [
-        { name: "📄 Load from CSV file", value: "csv" },
-        { name: "⌨️  Type directly", value: "direct" },
-      ],
-      default: "csv",
-    },
-    {
-      type: "input",
-      name: "comment",
-      message: "✨ Enter your comment:",
-      when: (answers) =>
-        answers.commentType === "manual" &&
-        answers.manualCommentType === "direct",
-      validate: (input: string) =>
-        input.trim() ? true : "❌ Comment cannot be empty",
-    },
-  ]);
-}
+import {
+  getSearchPreferences,
+  getUserBotPreference,
+} from "services/PromptTerminalService";
+import { getBotById } from "repository/BotRepository";
+import store from "store/store";
 
 // Update your main function
 async function main() {
   Logger.divider();
   Logger.banner(banner);
   Logger.divider();
+
+  const botId = await getUserBotPreference();
+
+  const botData = await getBotById(botId);
+
+  // add bot data to store
+  store.setBotData(botData);
 
   const preferences = await getSearchPreferences();
   const browser = new LaunchBrowser(getEnv("USERNAME"));
@@ -102,7 +45,10 @@ async function main() {
     urls = await yomen.getTrendingVideos(); // You'll need to implement this method
   } else {
     Logger.info(`Searching for keyword: ${preferences.keyword}`);
-    urls = await yomen.searchKeyword(preferences.keyword, preferences.sortBy);
+    urls = await yomen.searchKeyword(
+      preferences.keyword,
+      botData.youtube_config.sortValue
+    );
   }
 
   for (const url of urls) {
@@ -131,7 +77,7 @@ async function main() {
 }
 
 async function init() {
-  initialize();
+  await initialize();
   const zipFilePath = "./bin.zip";
   const driverFolderPath = "./driver";
 
@@ -156,7 +102,5 @@ async function init() {
     await main(); // Proceed to the main process after ensuring drivers are ready
   }
 }
+
 init();
-function generateAIComment(url: string) {
-  throw new Error("Function not implemented.");
-}

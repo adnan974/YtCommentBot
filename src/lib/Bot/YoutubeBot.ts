@@ -9,14 +9,18 @@ import type { searchParam } from "#types/index";
 import { collectLinks } from "#utils/videos/collectLinks";
 import { ICommentStrategy } from "./comments/ICommentStrategy";
 import { CommentStrategyFactory } from "./comments/CommentStrategyFactory";
+import store from "store/store";
 
 Logger.banner("🚀 Starting YOMEN Application...");
 
-export default class YOMEN {
+export default 
+class YOMEN {
   private page: Page;
+  private botData;
 
   constructor(pages: Page) {
     this.page = pages;
+    this.botData = store.getBotData();
   }
 
   async searchKeyword(
@@ -24,35 +28,19 @@ export default class YOMEN {
     sortBy: string = "relevance"
   ): Promise<string[] | any> {
     const keyword = param;
-    console.log(keyword);
+
     if (typeof keyword !== "string") {
       Logger.error("Invalid keyword type. Expected a string.");
       return;
     }
-    let sortOption;
-    switch (sortBy) {
-      case "relevance":
-        sortOption = "&sp=CAASAhAB";
-        break;
-      case "date":
-        sortOption = "&sp=CAI%253D";
-        break;
-      case "viewCount":
-        sortOption = "&sp=CAMSAhAB";
-        break;
-      case "rating":
-        sortOption = "&sp=CAESAhAB";
-        break;
-      default:
-        sortOption = "&sp=CAASAhAB";
-        break;
-    }
+    const sortOption = this.botData.youtube_config.sortOption;
 
     try {
       Logger.info(`Navigating to YouTube search results for: "${keyword}"`);
       await this.page.goto(
         "https://www.youtube.com/results?search_query=" +
           encodeURIComponent(keyword) +
+          "&sp=" +
           sortOption
       );
 
@@ -62,7 +50,7 @@ export default class YOMEN {
       Logger.info("Waiting for video results to load...");
       await this.page.waitForSelector("ytd-video-renderer");
 
-      Logger.info("Collecting video links...");
+      Logger.info(`Collecting video links between ${this.botData.youtube_config.minViewsFilter} and ${this.botData.youtube_config.maxViewsFilter} views...`);
       const videoLinks: string[] = await collectLinks(this.page);
 
       Logger.success(`Collected ${videoLinks.length} video links.`);
@@ -263,18 +251,107 @@ export default class YOMEN {
     await delay(randomNumber(1000, 2000));
   }
 
+  randomSmallDelay = () => delay(randomNumber(500, 1500));
+  randomMediumDelay = () => delay(randomNumber(3000, 7000));
+  randomLongDelay = () => delay(randomNumber(10000, 20000));
+
+  async hoverRandomElements(): Promise<void> {
+    const elements = await this.page.$$("a, button, div, img");
+    if (elements.length > 0) {
+      const element = elements[Math.floor(Math.random() * elements.length)];
+      if (element) {
+        const box = await element.boundingBox();
+        if (box) {
+          await this.page.mouse.move(
+            box.x + box.width / 2,
+            box.y + box.height / 2
+          );
+          Logger.info("Hovering over a random element...");
+          await this.randomSmallDelay();
+        }
+      }
+    }
+  }
+
+  async navigateThroughRecommendations(): Promise<void> {
+    Logger.info("Navigating through recommended videos...");
+  
+    try {
+      // Scroll to the recommended videos section
+      await this.page.evaluate(() => {
+        const recommendationsSection = document.querySelector(
+          "#related, #secondary, ytd-watch-next-secondary-results-renderer"
+        );
+        if (recommendationsSection) {
+          recommendationsSection.scrollIntoView({ behavior: "smooth" });
+        }
+      });
+  
+      // Wait for recommendations to load
+      await this.page.waitForSelector(
+        "ytd-compact-video-renderer, ytd-compact-radio-renderer"
+      );
+      await delay(randomNumber(2000, 4000));
+  
+      // Collect recommendation links
+      const recommendedLinks = await this.page.evaluate(() => {
+        return Array.from(
+          document.querySelectorAll(
+            "ytd-compact-video-renderer a#thumbnail, ytd-compact-radio-renderer a#thumbnail"
+          )
+        )
+          .map((el) => (el as HTMLAnchorElement).href)
+          .filter((href) => href.includes("watch"));
+      });
+  
+      Logger.info(
+        `Found ${recommendedLinks.length} recommended video links...`
+      );
+  
+      if (recommendedLinks.length === 0) {
+        Logger.warn("No recommended videos found!");
+        return;
+      }
+  
+      // Pick a random recommended video
+      const randomVideoLink =
+        recommendedLinks[Math.floor(Math.random() * recommendedLinks.length)];
+  
+      Logger.info(`Navigating to recommended video: ${randomVideoLink}`);
+      await this.page.goto(randomVideoLink);
+  
+      // Simulate watching the recommended video
+      await this.stayOnPageAndMoveMouse();
+      await this.randomVideoInteraction();
+  
+      // Optional: Recursive browsing through recommendations
+      if (Math.random() < 0.5) {
+        Logger.info("Deciding to continue browsing recommendations...");
+        await this.navigateThroughRecommendations();
+      } else {
+        Logger.info("Deciding to stop browsing recommendations.");
+      }
+    } catch (error) {
+      Logger.error(
+        `Failed to navigate through recommended videos: ${(error as Error).message}`
+      );
+    }
+  }
+  
+
   async goToVideo(
     videoLink: string,
     commentType = "random",
     manual: string | undefined = undefined
   ): Promise<void> {
+
     try {
       console.log(videoLink, commentType, manual);
 
       // Vérifier si le commentaire existe déjà
       const exist = await CommentDB.findOne({
         where: {
-          username: getEnv("USERNAME"),
+          username: this.botData.username,
           video_url: videoLink,
         },
       });
@@ -289,8 +366,9 @@ export default class YOMEN {
 
       // Attendre que la vidéo charge et simuler le visionnage
 
-      await this.stayOnPageAndMoveMouse(); // Regarde la vidéo entre 15 et 60 secondes
-      await this.randomVideoInteraction(); // Like/Subscribe aléatoire
+      //await this.stayOnPageAndMoveMouse(); // Regarde la vidéo entre 15 et 60 secondes
+      //await this.randomVideoInteraction(); // Like/Subscribe aléatoire
+      await this.navigateThroughRecommendations
       //TODO: Revoir le code
       //await this.browseComments(); // Parcours des commentaires
       await this.moveMouseRandomly(); // Déplace la souris
@@ -319,8 +397,9 @@ export default class YOMEN {
       Logger.error(
         `Failed to interact with the video: ${(e as Error).message}`
       );
+
       await CommentDB.create({
-        username: getEnv("USERNAME"),
+        username: this.botData.username,
         video_url: videoLink,
         comment_status: "failed",
         comment: (e as Error).message,
