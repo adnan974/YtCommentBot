@@ -16,6 +16,33 @@ import {
 } from "services/PromptTerminalService";
 import { getBotById } from "repository/BotRepository";
 import store from "store/store";
+import BotDetection from "#lib/Bot/BotDetection";
+
+async function disableUserInputFor5Seconds() {
+  // 🔴 Désactiver la saisie de l'utilisateur pour éviter une entrée accidentelle
+  process.stdin.resume();
+  process.stdin.setRawMode(true);
+
+  // Attendre 5 secondes et désactiver temporairement la touche Entrée
+  const timeout = 5000; // 5 secondes
+
+  const blockEnterKey = (data: Buffer) => {
+    if (data.toString() === "\r") {
+      // Empêcher l'effet de la touche Entrée pendant les 5 secondes
+      console.log("⏳ Touche Entrée bloquée pour 5 secondes...");
+      // Ici, on ne fait rien pour bloquer l'entrée (on n'appelle pas process.stdin.pause())
+    }
+  };
+
+  // Bloquer la touche Entrée
+  process.stdin.on("data", blockEnterKey);
+
+  // Après 5 secondes, autoriser à nouveau l'entrée
+  setTimeout(() => {
+    // Désactiver la gestion de l'événement de blocage de la touche Entrée
+    process.stdin.removeListener("data", blockEnterKey);
+  }, timeout);
+}
 
 // Update your main function
 async function main() {
@@ -31,10 +58,17 @@ async function main() {
   store.setBotData(botData);
 
   const preferences = await getSearchPreferences();
+
+  disableUserInputFor5Seconds();
+
   const browser = new LaunchBrowser(getEnv("USERNAME"));
   await browser.init();
 
   const pages = await browser.page;
+
+  const botDetection = new BotDetection(pages);
+  await botDetection.visitSannySoftAndStay();
+
   const login = new LoginYoutube(pages);
   await login.login();
 

@@ -33,7 +33,7 @@ class YOMEN {
       Logger.error("Invalid keyword type. Expected a string.");
       return;
     }
-    const sortOption = this.botData.youtube_config.sortOption;
+    const sortOption = this.botData.youtube_config.sortValue;
 
     try {
       Logger.info(`Navigating to YouTube search results for: "${keyword}"`);
@@ -216,7 +216,7 @@ class YOMEN {
 
   async browseComments(): Promise<void> {
     Logger.info("Browsing the comments...");
-
+  
     // Scroll vers la section des commentaires
     await this.page.evaluate(() => {
       const commentsSection = document.querySelector("#comments");
@@ -224,19 +224,23 @@ class YOMEN {
         commentsSection.scrollIntoView({ behavior: "smooth" });
       }
     });
-
+  
     // Pause aléatoire
     await delay(randomNumber(3000, 6000));
-
-    // Scroll lentement dans les commentaires
-    const scrollTimes = randomNumber(2, 5);
+  
+    // Scroll lentement dans les commentaires avec des distances et des pauses aléatoires
+    const scrollTimes = randomNumber(3, 5);
     for (let i = 0; i < scrollTimes; i++) {
-      await this.page.evaluate(() => {
-        window.scrollBy(0, window.innerHeight / 2);
-      });
+      const randomScrollDistance = randomNumber(100, 1000); // Distance de scroll variable
+      await this.page.evaluate((distance: number) => {
+        window.scrollBy(0, distance);
+      }, randomScrollDistance);
+      
+      // Pause aléatoire entre les scrolls
       await delay(randomNumber(2000, 5000));
     }
   }
+  
 
   async moveMouseRandomly(): Promise<void> {
     Logger.info("Moving the mouse randomly...");
@@ -364,13 +368,14 @@ class YOMEN {
       Logger.info(`Navigating to video page: ${videoLink}`);
       await this.page.goto(videoLink);
 
+      await delay(10000); // Attendre que la vidéo charge 
       // Attendre que la vidéo charge et simuler le visionnage
-
+      //await this.watchVideo(); 
+      await this.browseComments(); // Parcours des commentaires
       //await this.stayOnPageAndMoveMouse(); // Regarde la vidéo entre 15 et 60 secondes
       //await this.randomVideoInteraction(); // Like/Subscribe aléatoire
-      await this.navigateThroughRecommendations
+      //await this.navigateThroughRecommendations
       //TODO: Revoir le code
-      //await this.browseComments(); // Parcours des commentaires
       await this.moveMouseRandomly(); // Déplace la souris
 
       // Instancier la bonne stratégie de commentaire

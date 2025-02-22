@@ -1,9 +1,11 @@
 import fs from "fs";
 import path from "path";
 import UndetectableBrowser from "undetected-browser";
-import puppeteer, { Browser, Page } from "puppeteer";
+import { Browser, Page } from "puppeteer";
 import { setEnv } from "#config/index";
 import { UserAgent } from "constants/UserAgents";
+const puppeteer = require('puppeteer-extra')
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 
 export class LaunchBrowser {
     public browser: Browser | null;
@@ -30,28 +32,20 @@ export class LaunchBrowser {
             throw new Error("The 'driver' folder is empty or does not exist. Please ensure the necessary files are present.");
         }
 
+        puppeteer.use(StealthPlugin());
+
         const UndetectableBMS = new UndetectableBrowser(
             await puppeteer.launch({ 
                 headless: false,
                 executablePath: path.join(driverPath, "google-chrome-stable"),
                 userDataDir: `session/${this.username}`,
                 args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
                     '--disable-accelerated-2d-canvas',
                     '--disable-gpu',
-                    '--disable-features=IsolateOrigins,site-per-process',
-                    '--disable-blink-features=AutomationControlled',
-                    '--disable-features=SiteIsolation',
-                    '--disable-site-isolation-trials',
                     '--no-default-browser-check',
                     '--no-first-run',
-                    '--no-zygote',
                     '--mute-audio',
-                    '--no-zygote-forced',
-                    '--no-zygote-forced-for-chrome',
-                    '--disable-web-security',
                 ],
             })
         );

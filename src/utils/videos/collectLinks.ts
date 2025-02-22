@@ -41,8 +41,8 @@ export async function collectLinks(page) {
             return (
               video &&
               video.link &&
-              video.views > botData.minViewsFilter &&
-              video.views < botData.maxViewsFilter
+              video.views > botData.youtube_config.minViewsFilter &&
+              video.views < botData.youtube_config.maxViewsFilter
             );
           })
       );

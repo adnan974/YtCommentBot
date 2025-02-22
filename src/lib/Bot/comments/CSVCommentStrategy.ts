@@ -36,6 +36,13 @@ export class CSVCommentStrategy implements ICommentStrategy {
         .on("error", reject);
     });
   }
+
+  async typeLikeHuman(page, text) {
+    for (const char of text) {
+      const delay = Math.floor(Math.random() * (250 - 50) + 50); // Délais aléatoires entre 50ms et 250ms
+      await page.keyboard.type(char, { delay });
+    }
+  }
   
   async postComment(videoLink: string, page: Page) {
     try {
@@ -92,8 +99,7 @@ export class CSVCommentStrategy implements ICommentStrategy {
       // Cliquer sur la zone de saisie du commentaire
       await page.click("#placeholder-area");
 
-      // Saisir le commentaire
-      await page.type("#placeholder-area", randomComment);
+      await this.typeLikeHuman(page, randomComment);
 
       Logger.info("Submitting the comment...");
       await page.keyboard.press("Enter");
