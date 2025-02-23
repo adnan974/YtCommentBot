@@ -4,6 +4,7 @@ import Logger from "#utils/Logger";
 import { ICommentStrategy } from "./ICommentStrategy";
 import { Page } from "puppeteer";
 import { getEnv } from "#config/index";
+import { humanLikeMouseHelper } from "../HumanLikeMouseHelper/HumanLikeMouseHelper";
 
 export class DirectCommentStrategy implements ICommentStrategy {
   private comment: string;
@@ -52,14 +53,14 @@ export class DirectCommentStrategy implements ICommentStrategy {
       visible: true,
       timeout: 10_000
     });
-    await page.click("#placeholder-area");
+    await humanLikeMouseHelper.click("#placeholder-area");
     await page.type("#placeholder-area", this.comment);
 
     Logger.info("Submitting the comment...");
     await page.keyboard.press("Enter");
 
     Logger.success("Comment posted successfully!");
-    await page.click(
+    await humanLikeMouseHelper.click(
       "#submit-button > yt-button-shape > button > yt-touch-feedback-shape > div"
     );
     await CommentDB.create({

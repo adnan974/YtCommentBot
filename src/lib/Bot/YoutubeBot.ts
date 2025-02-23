@@ -10,6 +10,7 @@ import { collectLinks } from "#utils/videos/collectLinks";
 import { ICommentStrategy } from "./comments/ICommentStrategy";
 import { CommentStrategyFactory } from "./comments/CommentStrategyFactory";
 import store from "store/store";
+import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelper";
 
 Logger.banner("🚀 Starting YOMEN Application...");
 
@@ -193,7 +194,7 @@ class YOMEN {
         { visible: true }
       );
       // Cliquer sur le bouton J'aime
-      await this.page.click(
+      await humanLikeMouseHelper.click(
         'button.yt-spec-button-shape-next[aria-pressed="false"]'
       );
       await delay(randomNumber(1000, 2000));
@@ -208,7 +209,7 @@ class YOMEN {
       );
 
       // Cliquer sur le bouton S'abonner
-      await this.page.click(
+      await humanLikeMouseHelper.click(
         "yt-button-shape#subscribe-button-shape button.yt-spec-button-shape-next"
       );
     }
@@ -224,6 +225,8 @@ class YOMEN {
         commentsSection.scrollIntoView({ behavior: "smooth" });
       }
     });
+
+    Logger.info("Comment section found !");
   
     // Pause aléatoire
     await delay(randomNumber(3000, 6000));

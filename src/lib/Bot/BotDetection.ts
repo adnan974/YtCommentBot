@@ -1,17 +1,35 @@
-import { delay } from "#utils/delay";
 import Logger from "#utils/Logger";
 import { Page } from "puppeteer"; // Assurez-vous que la page Puppeteer est importée
 
 class BotDetection {
-  constructor(private page: Page) {}
+  constructor(private page) {}
 
-  async visitSannySoftAndStay(stayTime: number = 10000) {
+  async visitSannySoft() {
     try {
       const url = "https://bot.sannysoft.com/";
       Logger.info(`Navigating to ${url} for bot detection...`);
       await this.page.goto(url, { waitUntil: "networkidle2" }); // Assurer que la page se charge complètement
-      Logger.info(`Staying on ${url} for ${stayTime / 1000} seconds...`);
-      await delay(stayTime);
+    } catch (error) {
+      Logger.error(`Error while visiting bot detection site: ${error.message}`);
+    }
+  }
+
+  async visitCreepJs() {
+    try {
+      const url = "https://abrahamjuliot.github.io/creepjs/";
+      Logger.info(`Navigating to ${url} for bot detection...`);
+      await this.page.goto(url, { waitUntil: "networkidle2" }); // Assurer que la page se charge complètement
+    } catch (error) {
+      Logger.error(`Error while visiting bot detection site: ${error.message}`);
+    }
+  }
+
+
+  async visitBotDetectorRebrowser() {
+    try {
+      const url = "https://bot-detector.rebrowser.net/";
+      Logger.info(`Navigating to ${url} for bot detection...`);
+      await this.page.goto(url, { waitUntil: "networkidle2" }); // Assurer que la page se charge complètement
     } catch (error) {
       Logger.error(`Error while visiting bot detection site: ${error.message}`);
     }

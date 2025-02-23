@@ -7,6 +7,7 @@ import { ICommentStrategy } from "./ICommentStrategy";
 import { Page } from "puppeteer";
 import { getEnv } from "#config/index";
 import store from "store/store";
+import { humanLikeMouseHelper } from "../HumanLikeMouseHelper/HumanLikeMouseHelper";
 
 export class CSVCommentStrategy implements ICommentStrategy {
   private filePath: string;
@@ -97,14 +98,14 @@ export class CSVCommentStrategy implements ICommentStrategy {
       });
 
       // Cliquer sur la zone de saisie du commentaire
-      await page.click("#placeholder-area");
+      await humanLikeMouseHelper.click("#placeholder-area");
 
       await this.typeLikeHuman(page, randomComment);
 
       Logger.info("Submitting the comment...");
       await page.keyboard.press("Enter");
 
-      await page.click(
+      await humanLikeMouseHelper.click(
         "#submit-button > yt-button-shape > button > yt-touch-feedback-shape > div"
       );
       Logger.success("Comment posted successfully!");

@@ -1,22 +1,100 @@
 import "module-alias/register";
-import { LaunchBrowser } from "#lib/Browser";
+import { LaunchBrowser } from "#lib/browser/pupeteer-undetectable-browser";
 import LoginYoutube from "#lib/LoginYoutube";
 import Logger from "#utils/Logger";
 import { banner } from "#utils/banner";
 import { randomDelay } from "#utils/randomDelay";
 import { getEnv } from "./config";
 
-import { BotDB, GoogleAccountDB, initialize } from "models";
+import { initialize } from "models";
 import Downloader from "#utils/net";
 import fs from "fs";
 import YOMEN from "#lib/Bot/YoutubeBot";
 import {
+  getExecutionMode,
   getSearchPreferences,
   getUserBotPreference,
 } from "services/PromptTerminalService";
 import { getBotById } from "repository/BotRepository";
 import store from "store/store";
 import BotDetection from "#lib/Bot/BotDetection";
+import path from "path";
+import { delay } from "#utils/delay";
+import { LaunchPupeteerReBrowser } from "#lib/browser/pupeteer-rebrowser";
+import { LaunchPupeteerBrowser } from "#lib/browser/pupeteer-browser";
+import { LaunchPupeteerRealBrowser } from "#lib/browser/pupeteer-real-browser";
+
+async function runDetectionToolOnPepeteerReBrowser() {
+  const browser = new LaunchPupeteerReBrowser(getEnv("USERNAME"));
+  await browser.init();
+
+  const page1 = await browser.browser.newPage(); // Premier onglet
+  const page2 = await browser.browser.newPage(); // Deuxième onglet
+  const page3 = await browser.browser.newPage();
+
+  const botDetection1 = new BotDetection(page1);
+  await botDetection1.visitSannySoft(); // Lancer SannySoft sur le premier onglet
+
+  const botDetection2 = new BotDetection(page2);
+  await botDetection2.visitCreepJs(); // Lancer CreepJs sur le deuxième onglet
+
+  const botDetection3 = new BotDetection(page3);
+  await botDetection3.visitBotDetectorRebrowser();
+}
+
+async function runDetectionToolOnPepeteerBrowser() {
+  const browser = new LaunchPupeteerBrowser(getEnv("USERNAME"));
+  await browser.init();
+
+  const page1 = await browser.browser.newPage(); // Premier onglet
+  const page2 = await browser.browser.newPage(); // Deuxième onglet
+  const page3 = await browser.browser.newPage();
+
+  const botDetection1 = new BotDetection(page1);
+  await botDetection1.visitSannySoft(); // Lancer SannySoft sur le premier onglet
+
+  const botDetection2 = new BotDetection(page2);
+  await botDetection2.visitCreepJs(); // Lancer CreepJs sur le deuxième onglet
+
+  const botDetection3 = new BotDetection(page3);
+  await botDetection3.visitBotDetectorRebrowser();
+}
+
+async function runDetectionToolOnPepeteerRealBrowser() {
+  const browser = new LaunchPupeteerRealBrowser(getEnv("USERNAME"));
+  await browser.init();
+
+  const page1 = await browser.browser.newPage(); // Premier onglet
+  const page2 = await browser.browser.newPage(); // Deuxième onglet
+  const page3 = await browser.browser.newPage();
+
+  const botDetection1 = new BotDetection(page1);
+  await botDetection1.visitSannySoft(); // Lancer SannySoft sur le premier onglet
+
+  const botDetection2 = new BotDetection(page2);
+  await botDetection2.visitCreepJs(); // Lancer CreepJs sur le deuxième onglet
+
+  const botDetection3 = new BotDetection(page3);
+  await botDetection3.visitBotDetectorRebrowser();
+}
+
+async function runBotDetectionToolOnPepeteerUndetectableBrowser() {
+  const browser = new LaunchBrowser(getEnv("USERNAME"));
+  await browser.init();
+
+  const page1 = await browser.browser.newPage(); // Premier onglet
+  const page2 = await browser.browser.newPage(); // Deuxième onglet
+  const page3 = await browser.browser.newPage();
+
+  const botDetection1 = new BotDetection(page1);
+  await botDetection1.visitSannySoft(); // Lancer SannySoft sur le premier onglet
+
+  const botDetection2 = new BotDetection(page2);
+  await botDetection2.visitCreepJs(); // Lancer CreepJs sur le deuxième onglet
+
+  const botDetection3 = new BotDetection(page3);
+  await botDetection3.visitBotDetectorRebrowser();
+}
 
 async function disableUserInputFor5Seconds() {
   // 🔴 Désactiver la saisie de l'utilisateur pour éviter une entrée accidentelle
@@ -44,11 +122,66 @@ async function disableUserInputFor5Seconds() {
   }, timeout);
 }
 
+async function runSandboxMode() {
+  const browser = new LaunchBrowser(getEnv("USERNAME"));
+  await browser.init();
+
+  const pages = await browser.page;
+
+  const filePath = path.resolve("./src/views/sandbox.html");
+  //await pages.goto(`file://${filePath}`);
+  await pages.goto("https://www.youtube.com/watch?v=09m0PkeOZe4");
+
+  const yomen = new YOMEN(pages);
+  await delay(10000);
+  //yomen.browseComments();
+  await pages.evaluate(() => {
+    const commentsSection = document.querySelector("#comments") as HTMLElement;
+    if (commentsSection) {
+      const targetPosition = (commentsSection as HTMLElement).offsetTop;
+      const currentPosition = window.scrollY || window.pageYOffset;
+      const distanceToScroll = targetPosition - currentPosition;
+      const step = distanceToScroll / 100; // Défilement en 100 étapes
+
+      let scrollStep = 0;
+      const interval = setInterval(() => {
+        // Défilement progressif vers la position cible
+        window.scrollBy(0, step);
+
+        // Si on a atteint ou dépassé la position cible, on arrête le défilement
+        scrollStep++;
+        if (scrollStep >= 100) {
+          clearInterval(interval);
+        }
+      }, 10); // Un petit délai entre chaque "étape" pour simuler un défilement humain
+    }
+  });
+}
+
 // Update your main function
 async function main() {
   Logger.divider();
   Logger.banner(banner);
   Logger.divider();
+
+  //TODO: Crée une factory
+  const { mode, browserType } = await getExecutionMode();
+
+  if (mode === "sandbox") {
+    await runSandboxMode();
+    return;
+  } else if (mode === "botDetection") {
+    if (browserType === "realBrowser") {
+      await runDetectionToolOnPepeteerRealBrowser();
+    } else if (browserType === "reBrowser") {
+      await runDetectionToolOnPepeteerReBrowser();
+    } else if (browserType === "undetectableBrowser") {
+      await runBotDetectionToolOnPepeteerUndetectableBrowser();
+    } else if (browserType === "PeputeerBrowser") {
+      await runDetectionToolOnPepeteerBrowser();
+    }
+    return;
+  }
 
   const botId = await getUserBotPreference();
 
@@ -61,13 +194,10 @@ async function main() {
 
   disableUserInputFor5Seconds();
 
-  const browser = new LaunchBrowser(getEnv("USERNAME"));
+  const browser = new LaunchPupeteerRealBrowser(getEnv("USERNAME"));
   await browser.init();
 
   const pages = await browser.page;
-
-  const botDetection = new BotDetection(pages);
-  await botDetection.visitSannySoftAndStay();
 
   const login = new LoginYoutube(pages);
   await login.login();
