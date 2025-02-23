@@ -74,8 +74,7 @@ export class LaunchPupeteerRealBrowser {
 
     const { browser, page } = await connect({
       headless: false,
-      executablePath: path.join(driverPath, "google-chrome-stable"),
-      userDataDir: `session/${this.username}`,
+
       args: [
         "--disable-dev-shm-usage",
         "--disable-accelerated-2d-canvas",
@@ -84,7 +83,10 @@ export class LaunchPupeteerRealBrowser {
         "--no-first-run",
         "--mute-audio",
       ],
-      customConfig: {},
+      customConfig: {
+        executablePath: path.join(driverPath, "google-chrome-stable"),
+        userDataDir: `session/${this.username}`,
+      },
 
       turnstile: true,
 

@@ -134,20 +134,26 @@ class YOMEN {
   async watchVideo(): Promise<void> {
     // Attendre que la balise vidéo apparaisse
     await this.page.waitForSelector("video", { visible: true });
-
+  
     // Récupérer la durée de la vidéo via la balise <video>
     const videoDuration = await this.page.evaluate(() => {
       const videoElement = document.querySelector("video");
       return videoElement ? Math.floor(videoElement.duration) : 0;
     });
-
+  
     // Vérifier si la durée a bien été récupérée
     if (videoDuration > 0) {
+      // Calculer une durée aléatoire entre 10% et 30% de la durée totale
+      const minPercentage = 0.1; // 10%
+      const maxPercentage = 0.3; // 30%
+      const randomFactor = Math.random() * (maxPercentage - minPercentage) + minPercentage;
+      const watchDuration = Math.floor(100 * randomFactor);
+  
       Logger.info(`Video duration: ${videoDuration} seconds`);
-      Logger.info(`Watching the video for ${videoDuration} seconds...`);
-
-      // Attendre la durée complète de la vidéo
-      await delay(videoDuration * 1000);
+      Logger.info(`Watching the video for ${watchDuration} seconds (~${Math.floor(randomFactor * 100)}% of the total duration)...`);
+  
+      // Attendre la durée aléatoire
+      await delay(watchDuration * 1000);
     } else {
       Logger.warn(
         "Could not get video duration. Watching for a default 30 seconds..."
@@ -155,6 +161,7 @@ class YOMEN {
       await delay(30 * 1000); // Durée par défaut si la récupération échoue
     }
   }
+  
 
   async stayOnPageAndMoveMouse(): Promise<void> {
     // Générer une durée aléatoire entre 40 et 60 secondes
@@ -373,10 +380,10 @@ class YOMEN {
 
       await delay(10000); // Attendre que la vidéo charge 
       // Attendre que la vidéo charge et simuler le visionnage
-      //await this.watchVideo(); 
+      await this.watchVideo();
+      await this.randomVideoInteraction(); // Like/Subscribe aléatoire 
       await this.browseComments(); // Parcours des commentaires
       //await this.stayOnPageAndMoveMouse(); // Regarde la vidéo entre 15 et 60 secondes
-      //await this.randomVideoInteraction(); // Like/Subscribe aléatoire
       //await this.navigateThroughRecommendations
       //TODO: Revoir le code
       await this.moveMouseRandomly(); // Déplace la souris
