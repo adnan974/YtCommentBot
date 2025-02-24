@@ -1,7 +1,7 @@
 import Logger from "#utils/Logger";
 import { Page } from "puppeteer"; // Assurez-vous que la page Puppeteer est importée
 
-class BotDetection {
+class AntiBotDetectionTools {
   constructor(private page) {}
 
   async visitSannySoft() {
@@ -36,4 +36,4 @@ class BotDetection {
   }
 }
 
-export default BotDetection;
+export default AntiBotDetectionTools;

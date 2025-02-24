@@ -190,20 +190,35 @@ class YOMEN {
   async randomVideoInteraction(): Promise<void> {
     await delay(randomNumber(1000, 2000));
 
-    const shouldLike = Math.random() < 0.3; // 100% de chances d'aimer (ajuste si besoin)
-    const shouldSubscribe = Math.random() < 0.1; // 100% de chances de s'abonner (ajuste si besoin)
+    const shouldLike = Math.random() < 1; // 100% de chances d'aimer (ajuste si besoin)
+    const shouldSubscribe = Math.random() < 1; // 100% de chances de s'abonner (ajuste si besoin)
 
-    if (shouldLike) {
-      Logger.info("Liking the video...");
-      // Attendre que le bouton J'aime apparaisse
-      await this.page.waitForSelector(
-        'button.yt-spec-button-shape-next[aria-pressed="false"]',
-        { visible: true }
-      );
-      // Cliquer sur le bouton J'aime
-      await humanLikeMouseHelper.click(
-        'button.yt-spec-button-shape-next[aria-pressed="false"]'
-      );
+   if (shouldLike) {  
+      const likeButtonSelector =
+        'button[aria-label^="like this video along with"]';
+  
+      // Attendre que le bouton "like" soit visible
+      await this.page.waitForSelector(likeButtonSelector, {
+        visible: true,
+      });
+  
+      // Vérifier l'état du bouton
+      const isAlreadyLiked = await this.page.evaluate((selector) => {
+        const button = document.querySelector(selector);
+        return button?.getAttribute("aria-pressed") === "true";
+      }, likeButtonSelector);
+  
+      if (isAlreadyLiked) {
+        Logger.info("La vidéo est déjà likée.");
+      } else {
+        Logger.info("Liking the video...");
+        await humanLikeMouseHelper.click(
+          `${likeButtonSelector}[aria-pressed="false"]`
+        );
+        await delay(randomNumber(1000, 2000));
+      }
+  
+      // Ajouter un délai aléatoire après le clic pour simuler une action humaine
       await delay(randomNumber(1000, 2000));
     }
 

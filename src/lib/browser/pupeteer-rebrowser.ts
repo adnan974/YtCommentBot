@@ -7,6 +7,7 @@ import {
   humanLikeMouseHelper,
 } from "../Bot/HumanLikeMouseHelper/HumanLikeMouseHelper";
 import puppeteer, { Browser, Page } from "rebrowser-puppeteer";
+import AntiBotDetectionTools from "#lib/Bot/BotDetection";
 
 export class LaunchPupeteerReBrowser {
   public browser: Browser | null;
@@ -88,5 +89,22 @@ export class LaunchPupeteerReBrowser {
     if (this.browser) {
       await this.browser.close();
     }
+  }
+
+  async runAntiDetectTools() {
+    await this.init();
+  
+    const page1 = await this.browser.newPage(); // Premier onglet
+    const page2 = await this.browser.newPage(); // Deuxième onglet
+    const page3 = await this.browser.newPage();
+  
+    const botDetection1 = new AntiBotDetectionTools(page1);
+    await botDetection1.visitSannySoft(); // Lancer SannySoft sur le premier onglet
+  
+    const botDetection2 = new AntiBotDetectionTools(page2);
+    await botDetection2.visitCreepJs(); // Lancer CreepJs sur le deuxième onglet
+  
+    const botDetection3 = new AntiBotDetectionTools(page3);
+    await botDetection3.visitBotDetectorRebrowser();
   }
 }
