@@ -2,6 +2,7 @@ import { InsideHeartz } from "#database/init";
 import { DataTypes } from "@sequelize/core";
 import { GoogleAccountDB } from "./GoogleAccount";
 import { YoutubeConfigDB } from "./YoutubeConfig";
+import { CommentDB } from "./Comment";
 
 export const BotDB = InsideHeartz.define(
   "bot",
@@ -15,26 +16,13 @@ export const BotDB = InsideHeartz.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    numberMaxOfComments: {
+      type: DataTypes.INTEGER,
+      allowNull: false, 
+    }
   },
   {
     tableName: "bot",
     freezeTableName: true,
   }
 );
-
-// Définir la relation 1:1 ici
-GoogleAccountDB.hasOne(BotDB, {
-  foreignKey: "googleAccountId",
-});
-
-BotDB.belongsTo(GoogleAccountDB, {
-  foreignKey: "googleAccountId",
-});
-
-YoutubeConfigDB.hasOne(BotDB, {
-  foreignKey: "youtubeConfigId",
-});
-
-BotDB.belongsTo(YoutubeConfigDB, {
-  foreignKey: "youtubeConfigId",
-});

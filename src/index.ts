@@ -19,6 +19,7 @@ import { LaunchPupeteerReBrowser } from "#lib/browser/pupeteer-rebrowser";
 import { LaunchPupeteerBrowser } from "#lib/browser/pupeteer-browser";
 import { LaunchPupeteerRealBrowser } from "#lib/browser/pupeteer-real-browser";
 import SandboxMode from "#lib/modes/SandboxMode";
+import { getCommentsCountToday } from "repository/CommentRepository";
 
 async function disableUserInputFor5Seconds() {
   // 🔴 Désactiver la saisie de l'utilisateur pour éviter une entrée accidentelle
@@ -88,6 +89,10 @@ async function main() {
   const preferences = await getSearchPreferences();
 
   disableUserInputFor5Seconds();
+
+  const numberOfTodayCOmment = await getCommentsCountToday(botId);
+
+  Logger.warn(`Number of comments today: ${numberOfTodayCOmment}`);
 
   await browser.init();
 

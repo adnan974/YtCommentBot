@@ -5,6 +5,7 @@ import { ICommentStrategy } from "./ICommentStrategy";
 import { Page } from "puppeteer";
 import { getEnv } from "#config/index";
 import { humanLikeMouseHelper } from "../HumanLikeMouseHelper/HumanLikeMouseHelper";
+import { CommentStatus } from "constants/CommentStatus";
 
 export class DirectCommentStrategy implements ICommentStrategy {
   private comment: string;
@@ -66,7 +67,7 @@ export class DirectCommentStrategy implements ICommentStrategy {
     await CommentDB.create({
       username: getEnv("USERNAME"),
       video_url: videoLink,
-      comment_status: "success",
+      comment_status: CommentStatus.SUCCESS,
       comment: this.comment,
     });
     

@@ -8,6 +8,7 @@ import { Page } from "puppeteer";
 import { getEnv } from "#config/index";
 import store from "store/store";
 import { humanLikeMouseHelper } from "../HumanLikeMouseHelper/HumanLikeMouseHelper";
+import { CommentStatus } from "constants/CommentStatus";
 
 export class CSVCommentStrategy implements ICommentStrategy {
   private filePath: string;
@@ -44,7 +45,7 @@ export class CSVCommentStrategy implements ICommentStrategy {
       await page.keyboard.type(char, { delay });
     }
   }
-  
+
   async postComment(videoLink: string, page: Page) {
     try {
       Logger.info(`Reading comments from CSV: ${this.filePath}`);
@@ -113,8 +114,9 @@ export class CSVCommentStrategy implements ICommentStrategy {
       await CommentDB.create({
         username: store.getBotData().username,
         video_url: videoLink,
-        comment_status: "success",
+        comment_status: CommentStatus.SUCCESS,
         comment: randomComment,
+        botId: store.getBotData().id,
       });
     } catch (error) {
       Logger.error(`Failed to post a CSV comment: ${(error as Error).message}`);

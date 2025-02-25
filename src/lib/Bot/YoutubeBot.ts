@@ -1,4 +1,3 @@
-import { getEnv } from "#config/index";
 import { delay } from "#utils/delay";
 import Logger from "#utils/Logger";
 import { randomNumber } from "#utils/randomDelay";
@@ -11,11 +10,12 @@ import { ICommentStrategy } from "./comments/ICommentStrategy";
 import { CommentStrategyFactory } from "./comments/CommentStrategyFactory";
 import store from "store/store";
 import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelper";
+import { Op } from "@sequelize/core";
+import { CommentStatus } from "constants/CommentStatus";
 
 Logger.banner("🚀 Starting YOMEN Application...");
 
-export default 
-class YOMEN {
+export default class YOMEN {
   private page: Page;
   private botData;
 
@@ -51,7 +51,9 @@ class YOMEN {
       Logger.info("Waiting for video results to load...");
       await this.page.waitForSelector("ytd-video-renderer");
 
-      Logger.info(`Collecting video links between ${this.botData.youtube_config.minViewsFilter} and ${this.botData.youtube_config.maxViewsFilter} views...`);
+      Logger.info(
+        `Collecting video links between ${this.botData.youtube_config.minViewsFilter} and ${this.botData.youtube_config.maxViewsFilter} views...`
+      );
       const videoLinks: string[] = await collectLinks(this.page);
 
       Logger.success(`Collected ${videoLinks.length} video links.`);
@@ -134,24 +136,29 @@ class YOMEN {
   async watchVideo(): Promise<void> {
     // Attendre que la balise vidéo apparaisse
     await this.page.waitForSelector("video", { visible: true });
-  
+
     // Récupérer la durée de la vidéo via la balise <video>
     const videoDuration = await this.page.evaluate(() => {
       const videoElement = document.querySelector("video");
       return videoElement ? Math.floor(videoElement.duration) : 0;
     });
-  
+
     // Vérifier si la durée a bien été récupérée
     if (videoDuration > 0) {
       // Calculer une durée aléatoire entre 10% et 30% de la durée totale
       const minPercentage = 0.1; // 10%
       const maxPercentage = 0.3; // 30%
-      const randomFactor = Math.random() * (maxPercentage - minPercentage) + minPercentage;
+      const randomFactor =
+        Math.random() * (maxPercentage - minPercentage) + minPercentage;
       const watchDuration = Math.floor(100 * randomFactor);
-  
+
       Logger.info(`Video duration: ${videoDuration} seconds`);
-      Logger.info(`Watching the video for ${watchDuration} seconds (~${Math.floor(randomFactor * 100)}% of the total duration)...`);
-  
+      Logger.info(
+        `Watching the video for ${watchDuration} seconds (~${Math.floor(
+          randomFactor * 100
+        )}% of the total duration)...`
+      );
+
       // Attendre la durée aléatoire
       await delay(watchDuration * 1000);
     } else {
@@ -161,7 +168,6 @@ class YOMEN {
       await delay(30 * 1000); // Durée par défaut si la récupération échoue
     }
   }
-  
 
   async stayOnPageAndMoveMouse(): Promise<void> {
     // Générer une durée aléatoire entre 40 et 60 secondes
@@ -190,24 +196,24 @@ class YOMEN {
   async randomVideoInteraction(): Promise<void> {
     await delay(randomNumber(1000, 2000));
 
-    const shouldLike = Math.random() < 1; // 100% de chances d'aimer (ajuste si besoin)
-    const shouldSubscribe = Math.random() < 1; // 100% de chances de s'abonner (ajuste si besoin)
+    const shouldLike = Math.random() < 0.1; // 100% de chances d'aimer (ajuste si besoin)
+    const shouldSubscribe = Math.random() < 0.3; // 100% de chances de s'abonner (ajuste si besoin)
 
-   if (shouldLike) {  
+    if (shouldLike) {
       const likeButtonSelector =
         'button[aria-label^="like this video along with"]';
-  
+
       // Attendre que le bouton "like" soit visible
       await this.page.waitForSelector(likeButtonSelector, {
         visible: true,
       });
-  
+
       // Vérifier l'état du bouton
       const isAlreadyLiked = await this.page.evaluate((selector) => {
         const button = document.querySelector(selector);
         return button?.getAttribute("aria-pressed") === "true";
       }, likeButtonSelector);
-  
+
       if (isAlreadyLiked) {
         Logger.info("La vidéo est déjà likée.");
       } else {
@@ -217,7 +223,7 @@ class YOMEN {
         );
         await delay(randomNumber(1000, 2000));
       }
-  
+
       // Ajouter un délai aléatoire après le clic pour simuler une action humaine
       await delay(randomNumber(1000, 2000));
     }
@@ -239,7 +245,7 @@ class YOMEN {
 
   async browseComments(): Promise<void> {
     Logger.info("Browsing the comments...");
-  
+
     // Scroll vers la section des commentaires
     await this.page.evaluate(() => {
       const commentsSection = document.querySelector("#comments");
@@ -249,10 +255,10 @@ class YOMEN {
     });
 
     Logger.info("Comment section found !");
-  
+
     // Pause aléatoire
     await delay(randomNumber(3000, 6000));
-  
+
     // Scroll lentement dans les commentaires avec des distances et des pauses aléatoires
     const scrollTimes = randomNumber(3, 5);
     for (let i = 0; i < scrollTimes; i++) {
@@ -260,24 +266,10 @@ class YOMEN {
       await this.page.evaluate((distance: number) => {
         window.scrollBy(0, distance);
       }, randomScrollDistance);
-      
+
       // Pause aléatoire entre les scrolls
       await delay(randomNumber(2000, 5000));
     }
-  }
-  
-
-  async moveMouseRandomly(): Promise<void> {
-    Logger.info("Moving the mouse randomly...");
-
-    const x = randomNumber(100, 500);
-    const y = randomNumber(100, 500);
-
-    await this.page.mouse.move(x, y);
-    await delay(randomNumber(1000, 2000));
-
-    await this.page.mouse.move(x + 50, y + 50);
-    await delay(randomNumber(1000, 2000));
   }
 
   randomSmallDelay = () => delay(randomNumber(500, 1500));
@@ -304,7 +296,7 @@ class YOMEN {
 
   async navigateThroughRecommendations(): Promise<void> {
     Logger.info("Navigating through recommended videos...");
-  
+
     try {
       // Scroll to the recommended videos section
       await this.page.evaluate(() => {
@@ -315,13 +307,13 @@ class YOMEN {
           recommendationsSection.scrollIntoView({ behavior: "smooth" });
         }
       });
-  
+
       // Wait for recommendations to load
       await this.page.waitForSelector(
         "ytd-compact-video-renderer, ytd-compact-radio-renderer"
       );
       await delay(randomNumber(2000, 4000));
-  
+
       // Collect recommendation links
       const recommendedLinks = await this.page.evaluate(() => {
         return Array.from(
@@ -332,27 +324,27 @@ class YOMEN {
           .map((el) => (el as HTMLAnchorElement).href)
           .filter((href) => href.includes("watch"));
       });
-  
+
       Logger.info(
         `Found ${recommendedLinks.length} recommended video links...`
       );
-  
+
       if (recommendedLinks.length === 0) {
         Logger.warn("No recommended videos found!");
         return;
       }
-  
+
       // Pick a random recommended video
       const randomVideoLink =
         recommendedLinks[Math.floor(Math.random() * recommendedLinks.length)];
-  
+
       Logger.info(`Navigating to recommended video: ${randomVideoLink}`);
       await this.page.goto(randomVideoLink);
-  
+
       // Simulate watching the recommended video
       await this.stayOnPageAndMoveMouse();
       await this.randomVideoInteraction();
-  
+
       // Optional: Recursive browsing through recommendations
       if (Math.random() < 0.5) {
         Logger.info("Deciding to continue browsing recommendations...");
@@ -362,26 +354,30 @@ class YOMEN {
       }
     } catch (error) {
       Logger.error(
-        `Failed to navigate through recommended videos: ${(error as Error).message}`
+        `Failed to navigate through recommended videos: ${
+          (error as Error).message
+        }`
       );
     }
   }
-  
 
   async goToVideo(
     videoLink: string,
     commentType = "random",
     manual: string | undefined = undefined
   ): Promise<void> {
-
     try {
-      console.log(videoLink, commentType, manual);
-
       // Vérifier si le commentaire existe déjà
       const exist = await CommentDB.findOne({
         where: {
-          username: this.botData.username,
-          video_url: videoLink,
+          botId: this.botData.id,
+          video_url: {
+            [Op.like]: `%v=${new URL(
+              videoLink,
+              "https://www.youtube.com"
+            ).searchParams.get("v")}%`,
+          },
+          comment_status: CommentStatus.SUCCESS,
         },
       });
 
@@ -393,15 +389,13 @@ class YOMEN {
       Logger.info(`Navigating to video page: ${videoLink}`);
       await this.page.goto(videoLink);
 
-      await delay(10000); // Attendre que la vidéo charge 
+      await delay(10000); // Attendre que la vidéo charge
       // Attendre que la vidéo charge et simuler le visionnage
       await this.watchVideo();
-      await this.randomVideoInteraction(); // Like/Subscribe aléatoire 
+      await this.randomVideoInteraction(); // Like/Subscribe aléatoire
       await this.browseComments(); // Parcours des commentaires
       //await this.stayOnPageAndMoveMouse(); // Regarde la vidéo entre 15 et 60 secondes
       //await this.navigateThroughRecommendations
-      //TODO: Revoir le code
-      await this.moveMouseRandomly(); // Déplace la souris
 
       // Instancier la bonne stratégie de commentaire
       let commentStrategy: ICommentStrategy;
@@ -431,8 +425,9 @@ class YOMEN {
       await CommentDB.create({
         username: this.botData.username,
         video_url: videoLink,
-        comment_status: "failed",
+        comment_status: CommentStatus.FAILED,
         comment: (e as Error).message,
+        botId: this.botData.id,
       });
     }
   }
