@@ -35,3 +35,19 @@ export async function getBotById(botId: number) {
     nest: true,
   });
 }
+
+export async function getNumberMaxOfComments(botId: number) {
+  try {
+    const bot = await BotDB.findOne({
+      where: { id: botId },
+      attributes: ["numberMaxOfComments"], // On récupère seulement cette colonne
+    });
+
+
+    return bot ? bot.get("numberMaxOfComments") as number : null;
+  } catch (error) {
+    console.error("❌ Erreur lors de la récupération du nombre max de commentaires :", error);
+    return null;
+  }
+}
+

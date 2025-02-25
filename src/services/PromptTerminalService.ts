@@ -212,3 +212,16 @@ export async function getExecutionMode() {
   }
   return { mode };
 }
+
+export async function afterMaxCommentReached(): Promise<boolean> {
+  const { continueAction } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "continueAction",
+      message: "You have reached the maximum number of comments for today. Do you really want to continue ?",
+      default: false,
+    },
+  ]);
+
+  return continueAction; // retourne true si l'utilisateur veut continuer
+}

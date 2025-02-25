@@ -6,6 +6,7 @@ import { BotDB, CommentDB } from "models";
 import { Op } from "@sequelize/core";
 import store from "store/store";
 import { getCommentsCountToday } from "repository/CommentRepository";
+import { getNumberMaxOfComments } from "repository/BotRepository";
 
 class SandboxMode {
   private browser: LaunchPupeteerRealBrowser;
@@ -23,7 +24,7 @@ class SandboxMode {
     //TODO: ECRIRE LES TEST A FAIRE ICI
     // Vérifier si le commentaire existe déjà
 
-    console.log(await getCommentsCountToday(1))
+    console.log(await getNumberMaxOfComments(1))
   }
 
   async openYoutubePage() {

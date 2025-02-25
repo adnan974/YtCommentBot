@@ -9,11 +9,12 @@ import { getEnv } from "./config";
 import { initialize } from "models";
 import YOMEN from "#lib/Bot/YoutubeBot";
 import {
+  afterMaxCommentReached,
   getExecutionMode,
   getSearchPreferences,
   getUserBotPreference,
 } from "services/PromptTerminalService";
-import { getBotById } from "repository/BotRepository";
+import { getBotById, getNumberMaxOfComments } from "repository/BotRepository";
 import store from "store/store";
 import { LaunchPupeteerReBrowser } from "#lib/browser/pupeteer-rebrowser";
 import { LaunchPupeteerBrowser } from "#lib/browser/pupeteer-browser";
@@ -90,9 +91,20 @@ async function main() {
 
   disableUserInputFor5Seconds();
 
+  const numberOfMaxComments = await getNumberMaxOfComments(botId);
   const numberOfTodayCOmment = await getCommentsCountToday(botId);
 
   Logger.warn(`Number of comments today: ${numberOfTodayCOmment}`);
+
+  if (numberOfTodayCOmment >= numberOfMaxComments) {
+    // Demander à l'utilisateur s'il souhaite continuer
+    const canContinue = await afterMaxCommentReached();
+    
+    if (!canContinue) {
+      Logger.info("❌ Operation canceled.");
+      return; // Si l'utilisateur n'accepte pas, on arrête l'exécution.
+    }
+  }
 
   await browser.init();
 
