@@ -3,10 +3,11 @@ import { CommentDB } from "./Comment";
 import { BotDB } from "./Bot";
 import { GoogleAccountDB } from "./GoogleAccount";
 import { YoutubeConfigDB } from "./YoutubeConfig";
+import { setupRelations } from "./setuptRelation";
 
 
 async function initialize() {
-  await InsideHeartz.sync({ alter: true })
+  await InsideHeartz.sync()
     .then(() => {
       console.log("Database & tables synced!");
     })
@@ -15,11 +16,13 @@ async function initialize() {
     });
 }
 
+setupRelations();
+
 export {
   initialize,
   InsideHeartz,
-  CommentDB,
   BotDB,
+  CommentDB,
   GoogleAccountDB,
   YoutubeConfigDB
 };
