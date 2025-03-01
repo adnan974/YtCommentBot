@@ -1,11 +1,12 @@
 import Logger from "#utils/Logger";
 import { BotDB, GoogleAccountDB, YoutubeConfigDB } from "models";
 
-export async function saveBot(botUsername: string, googleAccountId: number) {
+export async function saveBot(botUsername: string, googleAccountId: number, numberMaxOfComments: number) {
   try {
     const bot = await BotDB.create({
       username: botUsername,
       googleAccountId: googleAccountId,
+      numberMaxOfComments,
     });
 
     Logger.info(

@@ -21,6 +21,7 @@ import { LaunchPupeteerBrowser } from "#lib/browser/pupeteer-browser";
 import { LaunchPupeteerRealBrowser } from "#lib/browser/pupeteer-real-browser";
 import SandboxMode from "#lib/modes/SandboxMode";
 import { getCommentsCountToday } from "repository/CommentRepository";
+import { LaunchPupeteerWithDolphinBrowser } from "#lib/browser/pupeteer-with-dolphin-anty";
 
 async function disableUserInputFor5Seconds() {
   // 🔴 Désactiver la saisie de l'utilisateur pour éviter une entrée accidentelle
@@ -56,7 +57,7 @@ async function main() {
 
   const { mode, browserType } = await getExecutionMode();
 
-  const browser = new LaunchPupeteerRealBrowser(getEnv("USERNAME"));
+  const browser = new LaunchPupeteerWithDolphinBrowser(getEnv("USERNAME"));
 
   if (mode === "sandbox") {
     const sandBoxMode = new SandboxMode(browser);
@@ -75,6 +76,9 @@ async function main() {
       await browser.runAntiDetectTools();
     } else if (browserType === "PeputeerBrowser") {
       const browser = new LaunchPupeteerBrowser(getEnv("USERNAME"));
+      await browser.runAntiDetectTools();
+    } else if (browserType === "dolphinAntyPeputeerBrowser") {
+      const browser = new LaunchPupeteerWithDolphinBrowser(getEnv("USERNAME"));
       await browser.runAntiDetectTools();
     }
     return;

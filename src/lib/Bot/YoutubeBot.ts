@@ -370,7 +370,6 @@ export default class YOMEN {
       // Vérifier si le commentaire existe déjà
       const exist = await CommentDB.findOne({
         where: {
-          botId: this.botData.id,
           video_url: {
             [Op.like]: `%v=${new URL(
               videoLink,
@@ -403,7 +402,7 @@ export default class YOMEN {
       try {
         commentStrategy = CommentStrategyFactory.create(commentType, {
           comment: manual,
-          filePath: "./comments.csv",
+          filePath: this.botData.csvCommentPath,
         });
       } catch (e) {
         Logger.error(

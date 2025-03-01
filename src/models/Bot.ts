@@ -1,8 +1,5 @@
 import { InsideHeartz } from "#database/init";
 import { DataTypes } from "@sequelize/core";
-import { GoogleAccountDB } from "./GoogleAccount";
-import { YoutubeConfigDB } from "./YoutubeConfig";
-import { CommentDB } from "./Comment";
 
 export const BotDB = InsideHeartz.define(
   "bot",
@@ -15,6 +12,10 @@ export const BotDB = InsideHeartz.define(
     username: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    csvCommentPath: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     numberMaxOfComments: {
       type: DataTypes.INTEGER,

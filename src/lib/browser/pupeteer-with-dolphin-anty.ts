@@ -1,18 +1,16 @@
-import path from "path";
-
-const { connect } = require("puppeteer-real-browser");
-
 import fs from "fs";
-import { setEnv } from "#config/index";
+import path from "path";
+import puppeteer, { Browser, Page } from "puppeteer";
+import { getEnv, setEnv } from "#config/index";
 import { UserAgent } from "constants/UserAgents";
 import {
   IHumanLikeMouseHelper,
   humanLikeMouseHelper,
 } from "../Bot/HumanLikeMouseHelper/HumanLikeMouseHelper";
-import { Browser, Page } from "puppeteer";
 import AntiBotDetectionTools from "#lib/Bot/BotDetection";
+import { connectToBrowser } from "./dolphin-anty_authent";
 
-export class LaunchPupeteerRealBrowser {
+export class LaunchPupeteerWithDolphinBrowser {
   public browser: Browser | null;
   public page: Page | null;
   public username: string;
@@ -27,44 +25,9 @@ export class LaunchPupeteerRealBrowser {
    * Initialize the browser with undetectable settings and a specific user session.
    */
   async init(): Promise<void> {
-    const driverPath = path.resolve("/usr/bin/");
-    const sessionDir = path.resolve(`session/${this.username}`);
-    if (!fs.existsSync(sessionDir)) {
-      fs.mkdirSync(sessionDir, { recursive: true });
-    }
-    // Check if driver folder exists and is not empty
-    if (!fs.existsSync(driverPath) || fs.readdirSync(driverPath).length === 0) {
-      throw new Error(
-        "The 'driver' folder is empty or does not exist. Please ensure the necessary files are present."
-      );
-    }
+    this.browser = await connectToBrowser();
 
-    const { browser, page } = await connect({
-      headless: false,
-
-      args: [
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-        "--no-default-browser-check",
-        "--no-first-run",
-        "--mute-audio",
-      ],
-      customConfig: {
-        executablePath: path.join(driverPath, "google-chrome-stable"),
-        userDataDir: `session/${this.username}`,
-      },
-
-      turnstile: true,
-
-      connectOption: {},
-
-      disableXvfb: true,
-      ignoreAllFlags: false,
-    });
-
-    this.browser = browser;
-    this.page = page;
+    this.page = await this.browser.newPage();
 
     const ghostCursorHelper: IHumanLikeMouseHelper = humanLikeMouseHelper;
     ghostCursorHelper.initConfig(this.page);
@@ -74,7 +37,6 @@ export class LaunchPupeteerRealBrowser {
 
     this.page.on("request", (request) => {
       const url = request.url().toLowerCase();
-      const resourceType = request.resourceType();
 
       if (
         url.endsWith(".mp4") ||
@@ -90,10 +52,6 @@ export class LaunchPupeteerRealBrowser {
         request.continue();
       }
     });
-
-    //await this.page.setViewport({ width: 1375, height: 3812 });
-    await this.page.setUserAgent(UserAgent.Chrome105);
-    setEnv(`SESSION_DIR_${this.username}`, `session/${this.username}`);
   }
 
   /**
@@ -107,17 +65,17 @@ export class LaunchPupeteerRealBrowser {
 
   async runAntiDetectTools() {
     await this.init();
-
+  
     const page1 = await this.browser.newPage(); // Premier onglet
     const page2 = await this.browser.newPage(); // Deuxième onglet
     const page3 = await this.browser.newPage();
-
+  
     const botDetection1 = new AntiBotDetectionTools(page1);
     await botDetection1.visitSannySoft(); // Lancer SannySoft sur le premier onglet
-
+  
     const botDetection2 = new AntiBotDetectionTools(page2);
     await botDetection2.visitCreepJs(); // Lancer CreepJs sur le deuxième onglet
-
+  
     const botDetection3 = new AntiBotDetectionTools(page3);
     await botDetection3.visitBotDetectorRebrowser();
   }

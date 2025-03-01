@@ -120,6 +120,13 @@ export async function getUserBotPreference() {
         input.trim() ? true : "❌ Password cannot be empty",
     },
     {
+      type: "input",
+      name: "numberMaxOfComments",
+      message: "🔒 Enter the maximum number of comments:",
+      when: (answers) => answers.botAction === "create",
+      validate: (input) => (input.trim() ? true : "❌ cannot be empty"),
+    },
+    {
       type: "list",
       name: "selectedBot",
       message: "📦 Select an existing bot:",
@@ -155,7 +162,11 @@ export async function getUserBotPreference() {
     }
 
     // Save the bot with the associated Google account ID
-    const bot = await saveBot(botInfo.botUsername, googleAccountId);
+    const bot = await saveBot(
+      botInfo.botUsername,
+      googleAccountId,
+      botInfo.numberMaxOfComments
+    );
     botId = bot.get("id");
   } else if (botInfo.botAction === "select") {
     // Load the selected bot's information
@@ -203,6 +214,10 @@ export async function getExecutionMode() {
             value: "undetectableBrowser",
           },
           { name: "🕵️ Peputeer Browser", value: "PeputeerBrowser" },
+          {
+            name: "🕵️ Dolphin Anty Peputeer Browser",
+            value: "dolphinAntyPeputeerBrowser",
+          },
         ],
         default: "realBrowser",
       },
@@ -218,7 +233,8 @@ export async function afterMaxCommentReached(): Promise<boolean> {
     {
       type: "confirm",
       name: "continueAction",
-      message: "You have reached the maximum number of comments for today. Do you really want to continue ?",
+      message:
+        "You have reached the maximum number of comments for today. Do you really want to continue ?",
       default: false,
     },
   ]);
