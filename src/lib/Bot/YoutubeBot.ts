@@ -192,10 +192,7 @@ export default class YoutubeBot {
         return;
       }
 
-      Logger.info(`Navigating to video page: ${videoLink}`);
-      await this.page.goto(videoLink);
-
-      await delay(10000);
+      await this.goToVideoAndWaitPageToLoad(videoLink);
 
       const videoId = this.extractVideoId(videoLink);
       await this.watchVideo(videoId);
@@ -348,5 +345,27 @@ export default class YoutubeBot {
         `Failed to navigate through Shorts videos: ${(error as Error).message}`
       );
     }
+  }
+
+  async goToVideoAndWaitPageToLoad(videoLink:string) {
+    Logger.info(`Navigating to video page: ${videoLink}`);
+    await this.page.goto(videoLink);
+
+    await delay(10000);
+  }
+
+  // Search bar
+  async searchOnSearchBar(query:string) {
+    Logger.info("Waiting for input search bar...")
+    const selector = "yt-searchbox";
+    await this.page.waitForSelector(selector); 
+    
+    Logger.info("Search bar found, searching...")
+    await this.page.click(selector); 
+    await this.page.type(selector, query); 
+    
+    await this.page.keyboard.press('Enter'); 
+    
+    await this.page.waitForNavigation(); 
   }
 }

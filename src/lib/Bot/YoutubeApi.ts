@@ -1,4 +1,5 @@
 import { getEnv } from "#config/index";
+import Logger from "#utils/Logger";
 import axios from "axios";
 
 class YoutubeAPI {
@@ -32,8 +33,6 @@ class YoutubeAPI {
    */
   async getVideoDurationInSeconds(videoId: string): Promise<number | null> {
     try {
-      console.log("getVideoDurationInSeconds");
-
       const response = await axios.get(this.baseUrl, {
         params: {
           part: "contentDetails",
@@ -53,8 +52,8 @@ class YoutubeAPI {
 
       return this.convertISO8601ToSeconds(durationISO);
     } catch (error) {
-      console.error(
-        "Erreur lors de la récupération des données YouTube :",
+      Logger.error(
+        "Erreur lors de la récupération des données YouTube : "+
         error
       );
       return null;

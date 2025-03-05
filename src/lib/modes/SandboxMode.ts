@@ -33,21 +33,18 @@ class SandboxMode {
     //console.log(await getNumberMaxOfComments(1))
 
     await this.openYoutubePage();
-    await delay(10000);
-    //const ytBot = new YoutubeVideoPageActions(this.page);
-    //await ytBot.likeOrSubscribe();
-    //await delay(7000);
+    const ytAction = new YoutubeVideoPageActions(this.page);
+    await ytAction.scrollToRecommendations();
+    await ytAction.clickOnRandomRecoVideo();
 
-    const ytAPI = YoutubeApi;
-    const videoDuration = await ytAPI.getVideoDuration("LGXCaPw58v8");
-
-    console.log(videoDuration);
   }
 
   async openYoutubePage() {
     this.page = await this.browser.page; // Premier onglet
+    const ytBot = new YoutubeBot(this.page);
 
-    this.page.goto("https://www.youtube.com/watch?v=LGXCaPw58v8");
+
+    await ytBot.goToVideoAndWaitPageToLoad("https://www.youtube.com/watch?v=LGXCaPw58v8");
   }
 
   async openSandboxHTMLFile() {

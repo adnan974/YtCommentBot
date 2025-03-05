@@ -1,4 +1,9 @@
-import { delay, randomMediumDelay, randomNumber, randomSmallDelay } from "#utils/delay";
+import {
+  delay,
+  randomMediumDelay,
+  randomNumber,
+  randomSmallDelay,
+} from "#utils/delay";
 import Logger from "#utils/Logger";
 import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelper";
 
@@ -181,6 +186,61 @@ class YoutubeVideoPageActions {
         }, interval);
       });
     });
+  }
+
+  async clickOnRandomRecoVideo() {
+    const selector = "#related #items #contents";
+    
+    await this.page.waitForSelector(selector);
+    Logger.info(`Waiting for recommendation selector to load...`);
+
+    // Sélectionner une vidéo au hasard parmi les 5 premières
+    const randomIndex = Math.floor(Math.random() * 5) + 1;
+
+    // Construire le sélecteur CSS pour cliquer sur la vidéo aléatoire
+    const videoSelector = `${selector} ytd-compact-video-renderer:nth-child(${randomIndex}) a#thumbnail`;
+    await randomSmallDelay();
+    // Attendre que l'élément soit interactif et cliquer dessus
+    await this.page.waitForSelector(videoSelector);
+    Logger.info(`Clicked on video ${randomIndex}`);
+
+    await humanLikeMouseHelper.click(videoSelector);
+  }
+
+  async scrollToRecommendations() {
+    const recommendationsSelector = "ytd-compact-video-renderer";
+  
+    let retries = 10; // Limite pour éviter une boucle infinie
+    let found = false;
+  
+    while (retries > 0) {
+      found = await this.page.evaluate((selector) => {
+        return document.querySelector(selector) !== null;
+      }, recommendationsSelector);
+  
+      if (found) break; // Si trouvé, on arrête le scroll
+  
+      await this.page.evaluate(() => {
+        window.scrollBy(0, randomNumber(250,450)); // Scroll vers le bas par petits incréments
+      });
+  
+      await randomSmallDelay();
+  
+      retries--;
+    }
+  
+    if (found) {
+      await this.page.evaluate((selector) => {
+        const element = document.querySelector(selector);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, recommendationsSelector);
+  
+      Logger.info("Scroll on recommendations done");
+    } else {
+      Logger.warn("Recommendations section not found after scrolling");
+    }
   }
 }
 
