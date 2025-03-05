@@ -1,6 +1,5 @@
-import { delay } from "#utils/delay";
+import { delay, randomMediumDelay, randomNumber, randomSmallDelay } from "#utils/delay";
 import Logger from "#utils/Logger";
-import { randomNumber } from "#utils/randomDelay";
 import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelper";
 
 class YoutubeVideoPageActions {
@@ -16,9 +15,9 @@ class YoutubeVideoPageActions {
   }
 
   async like() {
-    await delay(randomNumber(1000, 2000));
+    await randomSmallDelay();
 
-    const shouldLike = Math.random() < 1; // 100% de chances d'aimer (ajuste si besoin)
+    const shouldLike = Math.random() < 0.3; // 100% de chances d'aimer (ajuste si besoin)
 
     if (shouldLike) {
       const likeButtonSelector =
@@ -42,16 +41,16 @@ class YoutubeVideoPageActions {
         await humanLikeMouseHelper.click(
           `${likeButtonSelector}[aria-pressed="false"]`
         );
-        await delay(randomNumber(1000, 2000));
+        await randomSmallDelay();
       }
 
       // Ajouter un délai aléatoire après le clic pour simuler une action humaine
-      await delay(randomNumber(1000, 2000));
+      await randomSmallDelay();
     }
   }
 
   async subscribe() {
-    const shouldSubscribe = Math.random() < 1; // 100% de chances de s'abonner (ajuste si besoin)
+    const shouldSubscribe = Math.random() < 0.1; // 100% de chances de s'abonner (ajuste si besoin)
 
     if (shouldSubscribe) {
       Logger.info("Subscribing to the channel...");
@@ -103,7 +102,7 @@ class YoutubeVideoPageActions {
     await this.goToCommentSection();
 
     // Pause aléatoire
-    await delay(randomNumber(3000, 6000));
+    await randomMediumDelay();
 
     // Scroll lentement dans les commentaires avec des distances et des pauses aléatoires
     const scrollTimes = randomNumber(3, 5);

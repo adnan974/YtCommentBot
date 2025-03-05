@@ -1,6 +1,5 @@
-import { delay } from "#utils/delay";
+import { delay, randomNumber, randomSmallDelay } from "#utils/delay";
 import Logger from "#utils/Logger";
-import { randomDelay,randomNumber } from "#utils/randomDelay";
 import store from "store/store";
 
 export default class LoginYoutube {
@@ -53,7 +52,7 @@ export default class LoginYoutube {
             await this.page.waitForSelector(usernameSelector, { visible: true, timeout: 10000 });
             await this.page.type(usernameSelector, botData.google_account.email, { delay: randomNumber(100, 300) });
             await this.page.keyboard.press('Enter');
-            await randomDelay(1000, 2000);
+            await randomSmallDelay();
     
             // ✅ Enter Password
             Logger.info('Typing password...');

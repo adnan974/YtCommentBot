@@ -1,9 +1,7 @@
 import LoginYoutube from "#lib/LoginYoutube";
 import { banner } from "#utils/banner";
 import Logger from "#utils/Logger";
-import { randomDelay } from "#utils/randomDelay";
 import "module-alias/register";
-
 import YoutubeBot from "#lib/Bot/YoutubeBot";
 import { BrowserFactory } from "#lib/browser/browserFactory";
 import { IBrowserAutomationFramework } from "#lib/browser/IBrowserAutomationFramework";
@@ -18,6 +16,7 @@ import {
   getUserBotPreference,
 } from "services/PromptTerminalService";
 import store from "store/store";
+import { randomMediumDelay } from "#utils/delay";
 
 async function disableUserInputFor5Seconds() {
   // 🔴 Désactiver la saisie de l'utilisateur pour éviter une entrée accidentelle
@@ -99,36 +98,32 @@ async function main() {
   const login = new LoginYoutube(pages);
   await login.login();
 
-  const yomen = new YoutubeBot(pages);
+  const youtubeBot = new YoutubeBot(pages);
 
   let urls: string[];
   if (preferences.searchType === "trending") {
-    urls = await yomen.getTrendingVideos(); // You'll need to implement this method
+    urls = await youtubeBot.getTrendingVideos(); // You'll need to implement this method
   } else {
     Logger.info(`Searching for keyword: ${preferences.keyword}`);
-    urls = await yomen.searchKeyword(preferences.keyword);
+    urls = await youtubeBot.searchKeyword(preferences.keyword);
   }
 
   for (const url of urls) {
     Logger.info(`Navigating to video: ${url}`);
     console.log(preferences);
-    if (preferences.commentType === "ai") {
-      await yomen.goToVideo(url, "ai");
-    } else if (preferences.commentType === "copy") {
-      await yomen.goToVideo(url, "copy");
-    } else if (
+    if (
       preferences.commentType === "manual" &&
       preferences.manualCommentType === "csv"
     ) {
-      await yomen.goToVideo(url, "csv");
+      await youtubeBot.goToVideo(url, "csv");
     } else if (
       preferences.commentType === "manual" &&
       preferences.manualCommentType === "direct"
     ) {
-      await yomen.goToVideo(url, "direct", preferences.comment);
+      await youtubeBot.goToVideo(url, "direct", preferences.comment);
     }
 
-    await randomDelay(5000, 10000);
+    await randomMediumDelay();
   }
 
   Logger.info("Process completed");

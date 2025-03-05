@@ -8,8 +8,27 @@ export const delay = (ms: number) => {
     });
 }
 
-export const randomDelay = async (min: number, max: number) => {
-    const randDelay = Math.floor(Math.random() * (max - min + 1) + min);
-    const ms2sec = (randDelay / 1000).toFixed(2);
-    await delay(randDelay)
+/**
+ * Introduces a random delay between the specified minimum and maximum milliseconds.
+ * @param min - Minimum delay in milliseconds.
+ * @param max - Maximum delay in milliseconds.
+ * @returns A promise that resolves after the random delay.
+ */
+export async function randomDelay(min: number, max: number): Promise<void> {
+    const delay = Math.floor(Math.random() * (max - min + 1) + min);
+    return new Promise((resolve) => setTimeout(resolve, delay));
 }
+
+/**
+ * Generates a random integer between the specified minimum and maximum values (inclusive).
+ * @param min - Minimum value.
+ * @param max - Maximum value.
+ * @returns A random integer between min and max.
+ */
+export function randomNumber(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+export const  randomSmallDelay = () => delay(randomNumber(500, 1500));
+export const  randomMediumDelay = () => delay(randomNumber(3000, 7000));
+export const  randomLongDelay = () => delay(randomNumber(10000, 20000));

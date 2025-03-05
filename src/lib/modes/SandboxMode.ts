@@ -11,6 +11,7 @@ import { connectToBrowser } from "#lib/browser/dolphin-anty_authent";
 import YoutubeBot from "#lib/Bot/YoutubeBot";
 import { delay } from "#utils/delay";
 import YoutubeVideoPageActions from "#lib/Bot/YoutubeVideoPageActions";
+import YoutubeApi from "#lib/Bot/YoutubeApi";
 
 class SandboxMode {
   private browser;
@@ -33,14 +34,14 @@ class SandboxMode {
 
     await this.openYoutubePage();
     await delay(10000);
-    const ytBot = new YoutubeVideoPageActions(this.page);
-    await ytBot.likeOrSubscribe();
-    //await ytBot.goToCommentSection();
-    await delay(7000);
-    //await ytBot.getCommentCount();
-    //await ytBot.goToHomePageWithButton();
-    //await ytBot.goToShortWithButton();
-    //await ytBot.navigateShortVideosWithArrowDown();
+    //const ytBot = new YoutubeVideoPageActions(this.page);
+    //await ytBot.likeOrSubscribe();
+    //await delay(7000);
+
+    const ytAPI = YoutubeApi;
+    const videoDuration = await ytAPI.getVideoDuration("LGXCaPw58v8");
+
+    console.log(videoDuration);
   }
 
   async openYoutubePage() {

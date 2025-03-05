@@ -1,6 +1,5 @@
-import { delay } from "#utils/delay";
+import { delay, randomMediumDelay, randomSmallDelay } from "#utils/delay";
 import Logger from "#utils/Logger";
-import { randomNumber } from "#utils/randomDelay";
 import scrollToBottom from "#utils/scrollToBottom";
 import { CommentDB } from "models";
 import type { Page } from "puppeteer";
@@ -26,10 +25,6 @@ export default class YoutubeBot {
     this.page = pages;
     this.botData = store.getBotData();
   }
-
-  randomSmallDelay = () => delay(randomNumber(500, 1500));
-  randomMediumDelay = () => delay(randomNumber(3000, 7000));
-  randomLongDelay = () => delay(randomNumber(10000, 20000));
 
   async searchKeyword(param: searchParam): Promise<string[] | any> {
     const keyword = param;
@@ -101,20 +96,35 @@ export default class YoutubeBot {
     // Attendre que la balise vidéo apparaisse
     await this.page.waitForSelector("video", { visible: true });
 
-    // Récupérer la durée de la vidéo via la balise <video>
-    const videoDuration = await this.page.evaluate(() => {
-      const videoElement = document.querySelector("video");
-      return videoElement ? Math.floor(videoElement.duration) : 0;
-    });
+    let videoDuration = 0;
+    let attempts = 0;
+    const maxAttempts = 3;
 
-    // Vérifier si la durée a bien été récupérée
+    // Essayer de récupérer la durée de la vidéo avec un maximum de 3 tentatives
+    while (attempts < maxAttempts && videoDuration <= 0) {
+      Logger.info(`Attempt ${attempts + 1} to get video duration...`);
+
+      videoDuration = await this.page.evaluate(() => {
+        const videoElement = document.querySelector("video");
+        return videoElement ? Math.floor(videoElement.duration) : 0;
+      });
+
+      if (videoDuration > 0) break; // Si la durée est trouvée, on sort de la boucle
+
+      attempts++;
+      if (attempts < maxAttempts) {
+        Logger.warn("Failed to get video duration. Retrying...");
+        await delay(1000); // Attendre 1 seconde avant de réessayer
+      }
+    }
+
     if (videoDuration > 0) {
       // Calculer une durée aléatoire entre 10% et 30% de la durée totale
       const minPercentage = 0.1; // 10%
       const maxPercentage = 0.3; // 30%
       const randomFactor =
         Math.random() * (maxPercentage - minPercentage) + minPercentage;
-      const watchDuration = Math.floor(100 * randomFactor);
+      const watchDuration = Math.floor(videoDuration * randomFactor);
 
       Logger.info(`Video duration: ${videoDuration} seconds`);
       Logger.info(
@@ -127,12 +137,11 @@ export default class YoutubeBot {
       await delay(watchDuration * 1000);
     } else {
       Logger.warn(
-        "Could not get video duration. Watching for a default 30 seconds..."
+        "Could not get video duration after multiple attempts. Watching for a default 30 seconds..."
       );
       await delay(30 * 1000); // Durée par défaut si la récupération échoue
     }
   }
-
 
   async goToHomePageWithButton(): Promise<void> {
     try {
@@ -152,12 +161,34 @@ export default class YoutubeBot {
       await this.page.waitForSelector("ytd-rich-grid-renderer");
 
       // Ajouter un petit délai aléatoire pour simuler un comportement humain
-      await this.randomSmallDelay();
+      await randomSmallDelay();
     } catch (error) {
       Logger.error(
         `Failed to navigate to homepage: ${(error as Error).message}`
       );
     }
+  }
+
+  async checkIfCommentExist(videoLink: string): Promise<boolean> {
+    // Vérifier si le commentaire existe déjà
+    const exist = await CommentDB.findOne({
+      where: {
+        video_url: {
+          [Op.like]: `%v=${new URL(
+            videoLink,
+            "https://www.youtube.com"
+          ).searchParams.get("v")}%`,
+        },
+        comment_status: CommentStatus.SUCCESS,
+      },
+    });
+
+    if (exist) {
+      Logger.info(`Comment already exists for video: ${videoLink}`);
+      return true;
+    }
+
+    return false;
   }
 
   async goToVideo(
@@ -166,21 +197,7 @@ export default class YoutubeBot {
     manual: string | undefined = undefined
   ): Promise<void> {
     try {
-      // Vérifier si le commentaire existe déjà
-      const exist = await CommentDB.findOne({
-        where: {
-          video_url: {
-            [Op.like]: `%v=${new URL(
-              videoLink,
-              "https://www.youtube.com"
-            ).searchParams.get("v")}%`,
-          },
-          comment_status: CommentStatus.SUCCESS,
-        },
-      });
-
-      if (exist) {
-        Logger.info(`Comment already exists for video: ${videoLink}`);
+      if (await this.checkIfCommentExist(videoLink)) {
         return;
       }
 
@@ -191,32 +208,30 @@ export default class YoutubeBot {
       // Attendre que la vidéo charge et simuler le visionnage
       await this.watchVideo();
       await this.youtubeVideoPageActions.likeOrSubscribe(); // Like/Subscribe aléatoire
-      await this.youtubeVideoPageActions.browseComments(); // Parcours des commentaires
-      //await this.navigateThroughRecommendations
 
-      // Attendre que la page soit complètement chargée
+      const shouldComment = Math.random() < 0.6; // 60% de chances de commenter
+
+      if (!shouldComment) {
+        Logger.info("Skipping comment for this video...");
+        return;
+      }
+
+      await this.youtubeVideoPageActions.browseComments();
       await this.youtubeVideoPageActions.goToCommentSection();
 
       // Instancier la bonne stratégie de commentaire
       let commentStrategy: ICommentStrategy;
 
-      try {
-        commentStrategy = CommentStrategyFactory.create(commentType, {
-          comment: manual,
-          filePath: this.botData.csvCommentPath,
-        });
-      } catch (e) {
-        Logger.error(
-          `Failed to create comment strategy: ${(e as Error).message}`
-        );
-        return;
-      }
+      commentStrategy = CommentStrategyFactory.create(commentType, {
+        comment: manual,
+        filePath: this.botData.csvCommentPath,
+      });
 
       // Utiliser la stratégie pour poster le commentaire
       await commentStrategy.postComment(videoLink, this.page);
 
       // Ajouter un délai pour simuler un comportement humain
-      await delay(5000);
+      await randomMediumDelay();
     } catch (e) {
       Logger.error(
         `Failed to interact with the video: ${(e as Error).message}`
@@ -274,7 +289,7 @@ export default class YoutubeBot {
       await this.page.waitForSelector("ytd-reel-shelf-renderer");
 
       // Ajouter un petit délai aléatoire pour simuler un comportement humain
-      await this.randomSmallDelay();
+      await randomSmallDelay();
     } catch (error) {
       Logger.error(`Failed to navigate to Shorts: ${(error as Error).message}`);
     }
@@ -295,7 +310,7 @@ export default class YoutubeBot {
 
       // S'assurer que le focus est sur la vidéo Shorts
       await this.page.click("ytd-reel-video-renderer");
-      await this.randomSmallDelay();
+      await randomSmallDelay();
 
       // Naviguer à travers le nombre spécifié de vidéos
       for (let i = 0; i < numberOfVideos; i++) {
@@ -318,7 +333,7 @@ export default class YoutubeBot {
             await humanLikeMouseHelper.click(
               "ytd-reel-video-renderer:nth-child(" + (i + 1) + ")"
             );
-            await this.randomSmallDelay();
+            await randomSmallDelay();
             // Cliquer à nouveau pour reprendre
             await humanLikeMouseHelper.click(
               "ytd-reel-video-renderer:nth-child(" + (i + 1) + ")"
@@ -330,7 +345,7 @@ export default class YoutubeBot {
         }
 
         // Petit délai avant de passer à la vidéo suivante
-        await this.randomSmallDelay();
+        await randomSmallDelay();
       }
 
       Logger.success(

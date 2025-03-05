@@ -70,26 +70,8 @@ export class LaunchPupeteerRealBrowser implements IBrowserAutomationFramework {
     const ghostCursorHelper: IHumanLikeMouseHelper = humanLikeMouseHelper;
     ghostCursorHelper.initConfig(this.page);
 
-    // blocage des médias pour ne pas charger les vidéos
-    await this.page.setRequestInterception(true);
-
     this.page.on("request", (request) => {
       const url = request.url().toLowerCase();
-      const resourceType = request.resourceType();
-
-      if (
-        url.endsWith(".mp4") ||
-        url.endsWith(".avi") ||
-        url.endsWith(".flv") ||
-        url.endsWith(".mov") ||
-        url.endsWith(".wmv") ||
-        url.includes("googlevideo") || // Bloque les vidéos YouTube
-        url.includes("ytimg") // Bloque les miniatures et images YouTube
-      ) {
-        request.abort();
-      } else {
-        request.continue();
-      }
     });
 
     //await this.page.setViewport({ width: 1375, height: 3812 });

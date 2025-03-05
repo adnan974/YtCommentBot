@@ -31,8 +31,6 @@ export async function getSearchPreferences() {
       name: "commentType",
       message: "💭 How would you like to comment?",
       choices: [
-        { name: "🤖 Generate AI comments", value: "ai" },
-        { name: "📝 Copy Comments From Comments", value: "copy" },
         { name: "✍️  Manual comments", value: "manual" },
       ],
       default: "manual",
