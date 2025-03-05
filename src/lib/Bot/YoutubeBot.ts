@@ -12,22 +12,26 @@ import store from "store/store";
 import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelper";
 import { Op } from "@sequelize/core";
 import { CommentStatus } from "constants/CommentStatus";
+import YoutubeVideoPageActions from "./YoutubeVideoPageActions";
 
-Logger.banner("🚀 Starting YOMEN Application...");
+Logger.banner("🚀 Starting Youtube BOT Application...");
 
-export default class YOMEN {
+export default class YoutubeBot {
   private page: Page;
   private botData;
+  private youtubeVideoPageActions: YoutubeVideoPageActions;
 
   constructor(pages: Page) {
+    this.youtubeVideoPageActions = new YoutubeVideoPageActions(pages);
     this.page = pages;
     this.botData = store.getBotData();
   }
 
-  async searchKeyword(
-    param: searchParam,
-    sortBy: string = "relevance"
-  ): Promise<string[] | any> {
+  randomSmallDelay = () => delay(randomNumber(500, 1500));
+  randomMediumDelay = () => delay(randomNumber(3000, 7000));
+  randomLongDelay = () => delay(randomNumber(10000, 20000));
+
+  async searchKeyword(param: searchParam): Promise<string[] | any> {
     const keyword = param;
 
     if (typeof keyword !== "string") {
@@ -92,46 +96,6 @@ export default class YOMEN {
     return convertedUrls;
   }
 
-  async collectAllComments(): Promise<string[]> {
-    Logger.info("Starting to collect comments from the video...");
-    return await this.page.evaluate(() => {
-      const comments = new Set<string>();
-
-      return new Promise<string[]>((resolve) => {
-        let lastScrollHeight = document.body.scrollHeight;
-        let attempts = 0;
-        const maxAttempts = 10;
-        const interval = 2400;
-
-        const timer = setInterval(() => {
-          window.scrollBy(0, window.innerHeight);
-
-          document
-            .querySelectorAll(
-              "span.yt-core-attributed-string.yt-core-attributed-string--white-space-pre-wrap"
-            )
-            .forEach((comment) => {
-              if (comment && comment.textContent) {
-                comments.add(comment.textContent.trim());
-              }
-            });
-
-          if (document.body.scrollHeight > lastScrollHeight) {
-            lastScrollHeight = document.body.scrollHeight;
-            attempts = 0;
-          } else {
-            attempts++;
-          }
-
-          if (attempts >= maxAttempts) {
-            clearInterval(timer);
-            resolve(Array.from(comments));
-          }
-        }, interval);
-      });
-    });
-  }
-
   //TODO: A revoir, il semble que la vidéo prennent plutot la durée de l'annonce et non la vidéo
   async watchVideo(): Promise<void> {
     // Attendre que la balise vidéo apparaisse
@@ -169,194 +133,29 @@ export default class YOMEN {
     }
   }
 
-  async stayOnPageAndMoveMouse(): Promise<void> {
-    // Générer une durée aléatoire entre 40 et 60 secondes
-    const stayDuration = Math.floor(Math.random() * (60 - 40 + 1)) + 40;
-    Logger.info(`Staying on the page for ${stayDuration} seconds...`);
 
-    const endTime = Date.now() + stayDuration * 1000;
+  async goToHomePageWithButton(): Promise<void> {
+    try {
+      Logger.info("Navigating to YouTube homepage...");
 
-    // Bouger la souris aléatoirement tant que la durée n'est pas écoulée
-    while (Date.now() < endTime) {
-      // Obtenir des coordonnées aléatoires sur la page
-      const x = Math.floor(Math.random() * 800) + 100; // Coordonnées X entre 100 et 900
-      const y = Math.floor(Math.random() * 500) + 100; // Coordonnées Y entre 100 et 600
-
-      // Déplacer la souris
-      await this.page.mouse.move(x, y);
-      Logger.info(`Mouse moved to (${x}, ${y})`);
-
-      // Attendre entre 2 et 5 secondes avant le prochain mouvement
-      await delay(Math.floor(Math.random() * (5000 - 2000 + 1)) + 2000);
-    }
-
-    Logger.info("Finished staying on the page.");
-  }
-
-  async randomVideoInteraction(): Promise<void> {
-    await delay(randomNumber(1000, 2000));
-
-    const shouldLike = Math.random() < 0.1; // 100% de chances d'aimer (ajuste si besoin)
-    const shouldSubscribe = Math.random() < 0.3; // 100% de chances de s'abonner (ajuste si besoin)
-
-    if (shouldLike) {
-      const likeButtonSelector =
-        'button[aria-label^="like this video along with"]';
-
-      // Attendre que le bouton "like" soit visible
-      await this.page.waitForSelector(likeButtonSelector, {
+      // Attendre que le logo YouTube soit chargé et visible
+      await this.page.waitForSelector("ytd-topbar-logo-renderer#logo a", {
         visible: true,
       });
 
-      // Vérifier l'état du bouton
-      const isAlreadyLiked = await this.page.evaluate((selector) => {
-        const button = document.querySelector(selector);
-        return button?.getAttribute("aria-pressed") === "true";
-      }, likeButtonSelector);
+      // Cliquer sur le logo YouTube pour aller à la page d'accueil
+      await humanLikeMouseHelper.click("ytd-topbar-logo-renderer#logo a");
 
-      if (isAlreadyLiked) {
-        Logger.info("La vidéo est déjà likée.");
-      } else {
-        Logger.info("Liking the video...");
-        await humanLikeMouseHelper.click(
-          `${likeButtonSelector}[aria-pressed="false"]`
-        );
-        await delay(randomNumber(1000, 2000));
-      }
+      Logger.success("Successfully navigated to YouTube homepage");
 
-      // Ajouter un délai aléatoire après le clic pour simuler une action humaine
-      await delay(randomNumber(1000, 2000));
-    }
+      // Attendre que la page d'accueil soit chargée
+      await this.page.waitForSelector("ytd-rich-grid-renderer");
 
-    if (shouldSubscribe) {
-      Logger.info("Subscribing to the channel...");
-      // Attendre que le bouton S'abonner apparaisse
-      await this.page.waitForSelector(
-        "yt-button-shape#subscribe-button-shape button.yt-spec-button-shape-next",
-        { visible: true }
-      );
-
-      // Cliquer sur le bouton S'abonner
-      await humanLikeMouseHelper.click(
-        "yt-button-shape#subscribe-button-shape button.yt-spec-button-shape-next"
-      );
-    }
-  }
-
-  async browseComments(): Promise<void> {
-    Logger.info("Browsing the comments...");
-
-    // Scroll vers la section des commentaires
-    await this.page.evaluate(() => {
-      const commentsSection = document.querySelector("#comments");
-      if (commentsSection) {
-        commentsSection.scrollIntoView({ behavior: "smooth" });
-      }
-    });
-
-    Logger.info("Comment section found !");
-
-    // Pause aléatoire
-    await delay(randomNumber(3000, 6000));
-
-    // Scroll lentement dans les commentaires avec des distances et des pauses aléatoires
-    const scrollTimes = randomNumber(3, 5);
-    for (let i = 0; i < scrollTimes; i++) {
-      const randomScrollDistance = randomNumber(100, 1000); // Distance de scroll variable
-      await this.page.evaluate((distance: number) => {
-        window.scrollBy(0, distance);
-      }, randomScrollDistance);
-
-      // Pause aléatoire entre les scrolls
-      await delay(randomNumber(2000, 5000));
-    }
-  }
-
-  randomSmallDelay = () => delay(randomNumber(500, 1500));
-  randomMediumDelay = () => delay(randomNumber(3000, 7000));
-  randomLongDelay = () => delay(randomNumber(10000, 20000));
-
-  async hoverRandomElements(): Promise<void> {
-    const elements = await this.page.$$("a, button, div, img");
-    if (elements.length > 0) {
-      const element = elements[Math.floor(Math.random() * elements.length)];
-      if (element) {
-        const box = await element.boundingBox();
-        if (box) {
-          await this.page.mouse.move(
-            box.x + box.width / 2,
-            box.y + box.height / 2
-          );
-          Logger.info("Hovering over a random element...");
-          await this.randomSmallDelay();
-        }
-      }
-    }
-  }
-
-  async navigateThroughRecommendations(): Promise<void> {
-    Logger.info("Navigating through recommended videos...");
-
-    try {
-      // Scroll to the recommended videos section
-      await this.page.evaluate(() => {
-        const recommendationsSection = document.querySelector(
-          "#related, #secondary, ytd-watch-next-secondary-results-renderer"
-        );
-        if (recommendationsSection) {
-          recommendationsSection.scrollIntoView({ behavior: "smooth" });
-        }
-      });
-
-      // Wait for recommendations to load
-      await this.page.waitForSelector(
-        "ytd-compact-video-renderer, ytd-compact-radio-renderer"
-      );
-      await delay(randomNumber(2000, 4000));
-
-      // Collect recommendation links
-      const recommendedLinks = await this.page.evaluate(() => {
-        return Array.from(
-          document.querySelectorAll(
-            "ytd-compact-video-renderer a#thumbnail, ytd-compact-radio-renderer a#thumbnail"
-          )
-        )
-          .map((el) => (el as HTMLAnchorElement).href)
-          .filter((href) => href.includes("watch"));
-      });
-
-      Logger.info(
-        `Found ${recommendedLinks.length} recommended video links...`
-      );
-
-      if (recommendedLinks.length === 0) {
-        Logger.warn("No recommended videos found!");
-        return;
-      }
-
-      // Pick a random recommended video
-      const randomVideoLink =
-        recommendedLinks[Math.floor(Math.random() * recommendedLinks.length)];
-
-      Logger.info(`Navigating to recommended video: ${randomVideoLink}`);
-      await this.page.goto(randomVideoLink);
-
-      // Simulate watching the recommended video
-      await this.stayOnPageAndMoveMouse();
-      await this.randomVideoInteraction();
-
-      // Optional: Recursive browsing through recommendations
-      if (Math.random() < 0.5) {
-        Logger.info("Deciding to continue browsing recommendations...");
-        await this.navigateThroughRecommendations();
-      } else {
-        Logger.info("Deciding to stop browsing recommendations.");
-      }
+      // Ajouter un petit délai aléatoire pour simuler un comportement humain
+      await this.randomSmallDelay();
     } catch (error) {
       Logger.error(
-        `Failed to navigate through recommended videos: ${
-          (error as Error).message
-        }`
+        `Failed to navigate to homepage: ${(error as Error).message}`
       );
     }
   }
@@ -391,10 +190,12 @@ export default class YOMEN {
       await delay(10000); // Attendre que la vidéo charge
       // Attendre que la vidéo charge et simuler le visionnage
       await this.watchVideo();
-      await this.randomVideoInteraction(); // Like/Subscribe aléatoire
-      await this.browseComments(); // Parcours des commentaires
-      //await this.stayOnPageAndMoveMouse(); // Regarde la vidéo entre 15 et 60 secondes
+      await this.youtubeVideoPageActions.likeOrSubscribe(); // Like/Subscribe aléatoire
+      await this.youtubeVideoPageActions.browseComments(); // Parcours des commentaires
       //await this.navigateThroughRecommendations
+
+      // Attendre que la page soit complètement chargée
+      await this.youtubeVideoPageActions.goToCommentSection();
 
       // Instancier la bonne stratégie de commentaire
       let commentStrategy: ICommentStrategy;
@@ -428,6 +229,117 @@ export default class YOMEN {
         comment: (e as Error).message,
         botId: this.botData.id,
       });
+    }
+  }
+
+  // SHORT SECTION
+  async goToShortWithButton(): Promise<void> {
+    try {
+      Logger.info("Navigating to YouTube Shorts...");
+
+      // Définir les différents sélecteurs possibles pour le bouton Shorts
+      const selectors = [
+        "ytd-guide-entry-renderer a[title='Shorts']",
+        "ytd-mini-guide-entry-renderer a[title='Shorts']",
+      ];
+
+      // Attendre qu'au moins un des sélecteurs soit disponible
+      let foundSelector = null;
+      for (const selector of selectors) {
+        try {
+          // Vérifier si le sélecteur existe avec un court timeout
+          await this.page.waitForSelector(selector, {
+            visible: true,
+            timeout: 10000, // Court timeout pour ne pas trop ralentir le processus
+          });
+          foundSelector = selector;
+          Logger.info(`Found Shorts button using selector: ${selector}`);
+          break; // Sortir de la boucle si un sélecteur fonctionne
+        } catch (e) {
+          // Continuer à essayer les autres sélecteurs
+          continue;
+        }
+      }
+
+      if (!foundSelector) {
+        throw new Error("Could not find any Shorts button selector");
+      }
+
+      // Cliquer sur le bouton Shorts en utilisant le sélecteur trouvé
+      await humanLikeMouseHelper.click(foundSelector);
+
+      Logger.success("Successfully navigated to YouTube Shorts");
+
+      // Attendre que la page Shorts soit chargée
+      await this.page.waitForSelector("ytd-reel-shelf-renderer");
+
+      // Ajouter un petit délai aléatoire pour simuler un comportement humain
+      await this.randomSmallDelay();
+    } catch (error) {
+      Logger.error(`Failed to navigate to Shorts: ${(error as Error).message}`);
+    }
+  }
+
+  async navigateShortVideosWithArrowDown(
+    numberOfVideos: number = 5
+  ): Promise<void> {
+    try {
+      Logger.info(
+        `Starting navigation through ${numberOfVideos} Shorts videos using arrow down key...`
+      );
+
+      // Attendre que les vidéos Shorts soient chargées
+      await this.page.waitForSelector("ytd-reel-video-renderer", {
+        visible: true,
+      });
+
+      // S'assurer que le focus est sur la vidéo Shorts
+      await this.page.click("ytd-reel-video-renderer");
+      await this.randomSmallDelay();
+
+      // Naviguer à travers le nombre spécifié de vidéos
+      for (let i = 0; i < numberOfVideos; i++) {
+        Logger.info(`Navigating to Short video #${i + 1}`);
+
+        // Appuyer sur la touche flèche bas pour passer à la vidéo suivante
+        await this.page.keyboard.press("ArrowDown");
+
+        // Attendre un délai aléatoire entre 2 et 6 secondes pour simuler le visionnage
+        const viewingTime = Math.floor(Math.random() * 4000) + 2000;
+        Logger.info(
+          `Watching video #${i + 1} for ${viewingTime / 1000} seconds...`
+        );
+        await delay(viewingTime);
+
+        // Parfois interagir avec la vidéo pour un comportement plus humain
+        if (Math.random() > 0.7) {
+          try {
+            // Tenter de cliquer sur la vidéo pour mettre en pause/reprendre
+            await humanLikeMouseHelper.click(
+              "ytd-reel-video-renderer:nth-child(" + (i + 1) + ")"
+            );
+            await this.randomSmallDelay();
+            // Cliquer à nouveau pour reprendre
+            await humanLikeMouseHelper.click(
+              "ytd-reel-video-renderer:nth-child(" + (i + 1) + ")"
+            );
+          } catch (e) {
+            // Ignorer l'erreur si l'élément n'est pas cliquable
+            Logger.info("Could not interact with the video, continuing...");
+          }
+        }
+
+        // Petit délai avant de passer à la vidéo suivante
+        await this.randomSmallDelay();
+      }
+
+      Logger.success(
+        `Successfully navigated through ${numberOfVideos} Shorts videos`
+      );
+    } catch (error) {
+      Logger.error(
+        `Failed to navigate through Shorts videos: ${(error as Error).message}`
+      );
     }
   }
 }

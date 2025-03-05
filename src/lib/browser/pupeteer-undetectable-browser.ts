@@ -9,8 +9,10 @@ import {
   humanLikeMouseHelper,
 } from "../Bot/HumanLikeMouseHelper/HumanLikeMouseHelper";
 import AntiBotDetectionTools from "#lib/Bot/BotDetection";
+import { IBrowserAutomationFramework } from "./IBrowserAutomationFramework";
 
-export class LaunchUndetectableBrowser {
+
+export class LaunchUndetectableBrowser  implements IBrowserAutomationFramework {
   public browser: Browser | null;
   public page: Page | null;
   public username: string;

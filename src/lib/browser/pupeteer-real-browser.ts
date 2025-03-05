@@ -11,8 +11,9 @@ import {
 } from "../Bot/HumanLikeMouseHelper/HumanLikeMouseHelper";
 import { Browser, Page } from "puppeteer";
 import AntiBotDetectionTools from "#lib/Bot/BotDetection";
+import { IBrowserAutomationFramework } from "./IBrowserAutomationFramework";
 
-export class LaunchPupeteerRealBrowser {
+export class LaunchPupeteerRealBrowser implements IBrowserAutomationFramework {
   public browser: Browser | null;
   public page: Page | null;
   public username: string;

@@ -1,27 +1,23 @@
-import "module-alias/register";
-import { LaunchUndetectableBrowser } from "#lib/browser/pupeteer-undetectable-browser";
 import LoginYoutube from "#lib/LoginYoutube";
-import Logger from "#utils/Logger";
 import { banner } from "#utils/banner";
+import Logger from "#utils/Logger";
 import { randomDelay } from "#utils/randomDelay";
-import { getEnv } from "./config";
+import "module-alias/register";
 
+import YoutubeBot from "#lib/Bot/YoutubeBot";
+import { BrowserFactory } from "#lib/browser/browserFactory";
+import { IBrowserAutomationFramework } from "#lib/browser/IBrowserAutomationFramework";
+import SandboxMode from "#lib/modes/SandboxMode";
 import { initialize } from "models";
-import YOMEN from "#lib/Bot/YoutubeBot";
+import { getBotById, getNumberMaxOfComments } from "repository/BotRepository";
+import { getCommentsCountToday } from "repository/CommentRepository";
 import {
   afterMaxCommentReached,
   getExecutionMode,
   getSearchPreferences,
   getUserBotPreference,
 } from "services/PromptTerminalService";
-import { getBotById, getNumberMaxOfComments } from "repository/BotRepository";
 import store from "store/store";
-import { LaunchPupeteerReBrowser } from "#lib/browser/pupeteer-rebrowser";
-import { LaunchPupeteerBrowser } from "#lib/browser/pupeteer-browser";
-import { LaunchPupeteerRealBrowser } from "#lib/browser/pupeteer-real-browser";
-import SandboxMode from "#lib/modes/SandboxMode";
-import { getCommentsCountToday } from "repository/CommentRepository";
-import { LaunchPupeteerWithDolphinBrowser } from "#lib/browser/pupeteer-with-dolphin-anty";
 
 async function disableUserInputFor5Seconds() {
   // 🔴 Désactiver la saisie de l'utilisateur pour éviter une entrée accidentelle
@@ -57,30 +53,16 @@ async function main() {
 
   const { mode, browserType } = await getExecutionMode();
 
-  const browser = new LaunchPupeteerWithDolphinBrowser(getEnv("USERNAME"));
-
   if (mode === "sandbox") {
-    const sandBoxMode = new SandboxMode(browser);
+    const sandBoxMode = new SandboxMode(BrowserFactory.create("realBrowser"));
     await sandBoxMode.run();
     return;
-  } else if (mode === "botDetection") {
-    //TODO: Crée une factory
-    if (browserType === "realBrowser") {
-      const browser = new LaunchPupeteerRealBrowser(getEnv("USERNAME"));
-      browser.runAntiDetectTools();
-    } else if (browserType === "reBrowser") {
-      const browser = new LaunchPupeteerReBrowser(getEnv("USERNAME"));
-      await browser.runAntiDetectTools();
-    } else if (browserType === "undetectableBrowser") {
-      const browser = new LaunchUndetectableBrowser(getEnv("USERNAME"));
-      await browser.runAntiDetectTools();
-    } else if (browserType === "PeputeerBrowser") {
-      const browser = new LaunchPupeteerBrowser(getEnv("USERNAME"));
-      await browser.runAntiDetectTools();
-    } else if (browserType === "dolphinAntyPeputeerBrowser") {
-      const browser = new LaunchPupeteerWithDolphinBrowser(getEnv("USERNAME"));
-      await browser.runAntiDetectTools();
-    }
+  }
+
+  let browser: IBrowserAutomationFramework = BrowserFactory.create(browserType);
+
+  if (mode === "botDetection") {
+    browser.runAntiDetectTools();
     return;
   }
 
@@ -103,7 +85,7 @@ async function main() {
   if (numberOfTodayCOmment >= numberOfMaxComments) {
     // Demander à l'utilisateur s'il souhaite continuer
     const canContinue = await afterMaxCommentReached();
-    
+
     if (!canContinue) {
       Logger.info("❌ Operation canceled.");
       return; // Si l'utilisateur n'accepte pas, on arrête l'exécution.
@@ -117,17 +99,14 @@ async function main() {
   const login = new LoginYoutube(pages);
   await login.login();
 
-  const yomen = new YOMEN(pages);
+  const yomen = new YoutubeBot(pages);
 
   let urls: string[];
   if (preferences.searchType === "trending") {
     urls = await yomen.getTrendingVideos(); // You'll need to implement this method
   } else {
     Logger.info(`Searching for keyword: ${preferences.keyword}`);
-    urls = await yomen.searchKeyword(
-      preferences.keyword,
-      botData.youtube_config.sortValue
-    );
+    urls = await yomen.searchKeyword(preferences.keyword);
   }
 
   for (const url of urls) {

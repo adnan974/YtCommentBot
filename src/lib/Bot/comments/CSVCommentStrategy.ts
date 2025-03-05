@@ -63,36 +63,6 @@ export class CSVCommentStrategy implements ICommentStrategy {
 
       Logger.info("Placing the view on the comments section...");
 
-      // Attendre que la page soit complètement chargée
-      await page.waitForSelector("#comments", {
-        visible: true,
-        timeout: 60000,
-      });
-
-      await page.evaluate(() => {
-        const commentsSection = document.querySelector("#comments");
-        if (commentsSection) {
-          const rect = commentsSection.getBoundingClientRect();
-          window.scrollTo({
-            top: window.scrollY + rect.top - 100,
-            left: 0,
-            behavior: "instant",
-          });
-        }
-      });
-
-      await page.waitForSelector("#simple-box", {
-        visible: true,
-        timeout: 60000,
-      });
-
-      await page.evaluate(() => {
-        const commentBox = document.querySelector("#simple-box");
-        if (commentBox) {
-          commentBox.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      });
-
       await page.waitForSelector("#placeholder-area", {
         visible: true,
         timeout: 10_000,

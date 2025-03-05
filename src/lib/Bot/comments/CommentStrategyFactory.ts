@@ -2,7 +2,6 @@ import * as fs from "fs";
 import { CSVCommentStrategy } from "./CSVCommentStrategy";
 import { DirectCommentStrategy } from "./DirectCommentStrategy";
 import { ICommentStrategy } from "./ICommentStrategy";
-import { RandomCommentStrategy } from "./RandomCommentStrategy";
 import Logger from "#utils/Logger";
 
 export class CommentStrategyFactory {
@@ -11,8 +10,6 @@ export class CommentStrategyFactory {
     options?: { comment?: string; filePath?: string }
   ): ICommentStrategy {
     switch (type) {
-      case "random":
-        return new RandomCommentStrategy();
       case "csv":
         if (!options?.filePath) {
           throw new Error("File path is required for CSV comment strategy.");

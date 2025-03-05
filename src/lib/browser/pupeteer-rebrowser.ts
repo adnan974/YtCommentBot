@@ -8,8 +8,10 @@ import {
 } from "../Bot/HumanLikeMouseHelper/HumanLikeMouseHelper";
 import puppeteer, { Browser, Page } from "rebrowser-puppeteer";
 import AntiBotDetectionTools from "#lib/Bot/BotDetection";
+import { IBrowserAutomationFramework } from "./IBrowserAutomationFramework";
 
-export class LaunchPupeteerReBrowser {
+
+export class LaunchPupeteerReBrowser implements IBrowserAutomationFramework {
   public browser: Browser | null;
   public page: Page | null;
   public username: string;

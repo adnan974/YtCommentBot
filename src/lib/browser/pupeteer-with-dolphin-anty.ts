@@ -1,22 +1,17 @@
-import fs from "fs";
-import path from "path";
-import puppeteer, { Browser, Page } from "puppeteer";
-import { getEnv, setEnv } from "#config/index";
-import { UserAgent } from "constants/UserAgents";
+import AntiBotDetectionTools from "#lib/Bot/BotDetection";
+import { Browser, Page } from "puppeteer";
 import {
   IHumanLikeMouseHelper,
   humanLikeMouseHelper,
 } from "../Bot/HumanLikeMouseHelper/HumanLikeMouseHelper";
-import AntiBotDetectionTools from "#lib/Bot/BotDetection";
 import { connectToBrowser } from "./dolphin-anty_authent";
+import { IBrowserAutomationFramework } from "./IBrowserAutomationFramework";
 
-export class LaunchPupeteerWithDolphinBrowser {
+export class LaunchPupeteerWithDolphinBrowser implements IBrowserAutomationFramework {
   public browser: Browser | null;
   public page: Page | null;
-  public username: string;
 
-  constructor(username: string) {
-    this.username = username;
+  constructor() {
     this.browser = null;
     this.page = null;
   }

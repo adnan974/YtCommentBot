@@ -8,8 +8,9 @@ import {
   humanLikeMouseHelper,
 } from "../Bot/HumanLikeMouseHelper/HumanLikeMouseHelper";
 import AntiBotDetectionTools from "#lib/Bot/BotDetection";
+import { IBrowserAutomationFramework } from "./IBrowserAutomationFramework";
 
-export class LaunchPupeteerBrowser {
+export class LaunchPupeteerBrowser implements IBrowserAutomationFramework{
   public browser: Browser | null;
   public page: Page | null;
   public username: string;

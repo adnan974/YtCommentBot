@@ -193,14 +193,14 @@ export async function getExecutionMode() {
       choices: [
         { name: "🕵️ Bot Detection Mode", value: "botDetection" },
         { name: "🔒 Sandbox Mode", value: "sandbox" },
-        { name: "🚀 Normal Mode", value: "none" },
+        { name: "🚀 Normal Mode", value: "launchBot" },
       ],
-      default: "none",
+      default: "launchBot",
     },
   ]);
 
   // Si l'utilisateur choisit le mode "botDetection", on lui demande quel type de navigateur il veut utiliser
-  if (mode === "botDetection") {
+  if (mode === "botDetection" || mode === "launchBot") {
     const { browserType } = await inquirer.prompt([
       {
         type: "list",
@@ -213,9 +213,9 @@ export async function getExecutionMode() {
             name: "🕵️ Pupeteer  Undetectable Browser",
             value: "undetectableBrowser",
           },
-          { name: "🕵️ Peputeer Browser", value: "PeputeerBrowser" },
+          { name: "🚀 Peputeer Browser", value: "PeputeerBrowser" },
           {
-            name: "🕵️ Dolphin Anty Peputeer Browser",
+            name: "🐬  Dolphin Anty Peputeer Browser",
             value: "dolphinAntyPeputeerBrowser",
           },
         ],

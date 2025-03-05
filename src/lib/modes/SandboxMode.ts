@@ -8,6 +8,9 @@ import store from "store/store";
 import { getCommentsCountToday } from "repository/CommentRepository";
 import { getNumberMaxOfComments } from "repository/BotRepository";
 import { connectToBrowser } from "#lib/browser/dolphin-anty_authent";
+import YoutubeBot from "#lib/Bot/YoutubeBot";
+import { delay } from "#utils/delay";
+import YoutubeVideoPageActions from "#lib/Bot/YoutubeVideoPageActions";
 
 class SandboxMode {
   private browser;
@@ -18,16 +21,26 @@ class SandboxMode {
   }
 
   async run() {
-    //await this.browser.init();
+    await this.browser.init();
 
     //await this.openSandboxHTMLFile();
 
     //TODO: ECRIRE LES TEST A FAIRE ICI
     // Vérifier si le commentaire existe déjà
+    //await connectToBrowser()
 
-    await connectToBrowser()
+    //console.log(await getNumberMaxOfComments(1))
 
-    console.log(await getNumberMaxOfComments(1))
+    await this.openYoutubePage();
+    await delay(10000);
+    const ytBot = new YoutubeVideoPageActions(this.page);
+    await ytBot.likeOrSubscribe();
+    //await ytBot.goToCommentSection();
+    await delay(7000);
+    //await ytBot.getCommentCount();
+    //await ytBot.goToHomePageWithButton();
+    //await ytBot.goToShortWithButton();
+    //await ytBot.navigateShortVideosWithArrowDown();
   }
 
   async openYoutubePage() {
