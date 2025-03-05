@@ -12,6 +12,7 @@ import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelpe
 import { Op } from "@sequelize/core";
 import { CommentStatus } from "constants/CommentStatus";
 import YoutubeVideoPageActions from "./YoutubeVideoPageActions";
+import YoutubeApi from "./YoutubeApi";
 
 Logger.banner("🚀 Starting Youtube BOT Application...");
 
@@ -91,32 +92,22 @@ export default class YoutubeBot {
     return convertedUrls;
   }
 
-  //TODO: A revoir, il semble que la vidéo prennent plutot la durée de l'annonce et non la vidéo
-  async watchVideo(): Promise<void> {
+    /**
+   * Extrait l'ID d'une vidéo YouTube à partir de son URL
+   * @param url L'URL complète de la vidéo YouTube
+   * @returns L'ID de la vidéo (ex: "LGXCaPw58v8") ou null si invalide
+   */
+    extractVideoId(url: string): string | null {
+      const regex = /[?&]v=([^&]+)/;
+      const match = url.match(regex);
+      return match ? match[1] : null;
+    }
+
+  async watchVideo(url:string): Promise<void> {
     // Attendre que la balise vidéo apparaisse
     await this.page.waitForSelector("video", { visible: true });
 
-    let videoDuration = 0;
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    // Essayer de récupérer la durée de la vidéo avec un maximum de 3 tentatives
-    while (attempts < maxAttempts && videoDuration <= 0) {
-      Logger.info(`Attempt ${attempts + 1} to get video duration...`);
-
-      videoDuration = await this.page.evaluate(() => {
-        const videoElement = document.querySelector("video");
-        return videoElement ? Math.floor(videoElement.duration) : 0;
-      });
-
-      if (videoDuration > 0) break; // Si la durée est trouvée, on sort de la boucle
-
-      attempts++;
-      if (attempts < maxAttempts) {
-        Logger.warn("Failed to get video duration. Retrying...");
-        await delay(1000); // Attendre 1 seconde avant de réessayer
-      }
-    }
+    let videoDuration = await YoutubeApi.getVideoDurationInSeconds(url);
 
     if (videoDuration > 0) {
       // Calculer une durée aléatoire entre 10% et 30% de la durée totale
@@ -204,9 +195,10 @@ export default class YoutubeBot {
       Logger.info(`Navigating to video page: ${videoLink}`);
       await this.page.goto(videoLink);
 
-      await delay(10000); // Attendre que la vidéo charge
-      // Attendre que la vidéo charge et simuler le visionnage
-      await this.watchVideo();
+      await delay(10000);
+
+      const videoId = this.extractVideoId(videoLink);
+      await this.watchVideo(videoId);
       await this.youtubeVideoPageActions.likeOrSubscribe(); // Like/Subscribe aléatoire
 
       const shouldComment = Math.random() < 0.6; // 60% de chances de commenter
