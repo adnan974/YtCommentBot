@@ -4,15 +4,16 @@ import { BotDB } from "./Bot";
 import { GoogleAccountDB } from "./GoogleAccount";
 import { YoutubeConfigDB } from "./YoutubeConfig";
 import { setupRelations } from "./setuptRelation";
+import Logger from "#utils/Logger";
 
 
 async function initialize() {
   await InsideHeartz.sync()
     .then(() => {
-      console.log("Database & tables synced!");
+      Logger.info("Database & tables synced!");
     })
     .catch((err) => {
-      console.error("Error syncing database:", err);
+      Logger.error("Error syncing database: " +err);
     });
 }
 

@@ -48,7 +48,6 @@ class YoutubeAPI {
 
       const durationISO: string =
         response.data.items[0].contentDetails.duration;
-      console.log("Duration ISO:", durationISO);
 
       return this.convertISO8601ToSeconds(durationISO);
     } catch (error) {

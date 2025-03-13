@@ -6,6 +6,7 @@ import {
 } from "#utils/delay";
 import Logger from "#utils/Logger";
 import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelper";
+import YoutubeApi from "./YoutubeApi";
 
 class YoutubeVideoPageActions {
   page;
@@ -199,7 +200,7 @@ class YoutubeVideoPageActions {
 
     // Construire le sélecteur CSS pour cliquer sur la vidéo aléatoire
     const videoSelector = `${selector} ytd-compact-video-renderer:nth-child(${randomIndex}) a#thumbnail`;
-    await randomSmallDelay();
+    await randomMediumDelay();
     // Attendre que l'élément soit interactif et cliquer dessus
     await this.page.waitForSelector(videoSelector);
     Logger.info(`Clicked on video ${randomIndex}`);
@@ -242,6 +243,61 @@ class YoutubeVideoPageActions {
       Logger.warn("Recommendations section not found after scrolling");
     }
   }
+
+    /**
+     * Extrait l'ID d'une vidéo YouTube à partir de son URL
+     * @param url L'URL complète de la vidéo YouTube
+     * @returns L'ID de la vidéo (ex: "LGXCaPw58v8") ou null si invalide
+     */
+    private extractVideoId(url: string): string | null {
+      const regex = /[?&]v=([^&]+)/;
+      const match = url.match(regex);
+      return match ? match[1] : null;
+    }
+  
+    async watchVideo(url: string): Promise<void> {
+      // Attendre que la balise vidéo apparaisse
+      await this.page.waitForSelector("video", { visible: true });
+
+      const videoId = this.extractVideoId(url);
+  
+      let videoDuration = await YoutubeApi.getVideoDurationInSeconds(videoId);
+  
+      if (videoDuration > 0) {
+        if (videoDuration > 600) {
+          // 600 secondes = 10 minutes
+          const randomWatchTime = Math.floor(
+            Math.random() * (300 - 180 + 1) + 180
+          ); // Durée entre 3 et 5 minutes
+          Logger.info(
+            `Video duration too high: ${videoDuration} seconds. Watching the video for ${randomWatchTime} seconds (3-5 mins)...`
+          );
+          await delay(randomWatchTime * 1000); // Regarder entre 3 et 5 minutes
+        } else {
+          // Calculer une durée aléatoire entre 10% et 30% de la durée totale
+          const minPercentage = 0.1; // 10%
+          const maxPercentage = 0.3; // 30%
+          const randomFactor =
+            Math.random() * (maxPercentage - minPercentage) + minPercentage;
+          const watchDuration = Math.floor(videoDuration * randomFactor);
+  
+          Logger.info(`Video duration: ${videoDuration} seconds`);
+          Logger.info(
+            `Watching the video for ${watchDuration} seconds (~${Math.floor(
+              randomFactor * 100
+            )}% of the total duration)...`
+          );
+  
+          // Attendre la durée aléatoire
+          await delay(watchDuration * 1000);
+        }
+      } else {
+        Logger.warn(
+          "Could not get video duration after multiple attempts. Watching for a default 30 seconds..."
+        );
+        await delay(30 * 1000); // Durée par défaut si la récupération échoue
+      }
+    }
 }
 
 export default YoutubeVideoPageActions;

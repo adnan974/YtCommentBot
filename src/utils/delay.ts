@@ -29,6 +29,6 @@ export function randomNumber(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-export const  randomSmallDelay = () => delay(randomNumber(500, 1500));
-export const  randomMediumDelay = () => delay(randomNumber(3000, 7000));
-export const  randomLongDelay = () => delay(randomNumber(10000, 20000));
+export const  randomSmallDelay = async () => await delay(randomNumber(500, 1500));
+export const  randomMediumDelay = async () => await delay(randomNumber(3000, 7000));
+export const  randomLongDelay = async () => await delay(randomNumber(10000, 20000));

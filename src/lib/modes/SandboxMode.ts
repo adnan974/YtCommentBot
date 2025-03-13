@@ -1,17 +1,7 @@
-import { getEnv } from "#config/index";
 import path from "path";
-import { LaunchPupeteerRealBrowser } from "#lib/browser/pupeteer-real-browser";
-import { humanLikeMouseHelper } from "#lib/Bot/HumanLikeMouseHelper/HumanLikeMouseHelper";
-import { BotDB, CommentDB } from "models";
-import { Op } from "@sequelize/core";
-import store from "store/store";
-import { getCommentsCountToday } from "repository/CommentRepository";
-import { getNumberMaxOfComments } from "repository/BotRepository";
-import { connectToBrowser } from "#lib/browser/dolphin-anty_authent";
 import YoutubeBot from "#lib/Bot/YoutubeBot";
-import { delay } from "#utils/delay";
-import YoutubeVideoPageActions from "#lib/Bot/YoutubeVideoPageActions";
-import YoutubeApi from "#lib/Bot/YoutubeApi";
+import { YoutubeRoutine } from "#lib/Bot/YoutubeRoutine";
+import { randomLongDelay } from "#utils/delay";
 
 class SandboxMode {
   private browser;
@@ -30,12 +20,11 @@ class SandboxMode {
     // Vérifier si le commentaire existe déjà
     //await connectToBrowser()
 
-    //console.log(await getNumberMaxOfComments(1))
-
-    await this.openYoutubePage();
-    const ytAction = new YoutubeVideoPageActions(this.page);
-    await ytAction.scrollToRecommendations();
-    await ytAction.clickOnRandomRecoVideo();
+    const page = await this.browser.page;
+    const warmer = new YoutubeRoutine(page);
+    await page.goto("https://www.youtube.com/watch?v=XvrfJBBE9Pw");
+    await randomLongDelay();
+    await warmer.findCommentByUsername("ThomasLeRelou");
 
   }
 

@@ -1,3 +1,4 @@
+import Logger from "#utils/Logger";
 import puppeteer from "puppeteer";
 
 const axios = require("axios");
@@ -16,7 +17,7 @@ export async function authenticateDolphinAnty() {
       }
     );
 
-    console.log("✅ Authentification réussie !");
+    Logger.info("✅ Authentification success !");
     return response.data;
   } catch (error) {
     console.error(
@@ -32,11 +33,9 @@ export async function startBrowserProfile() {
   const response = await axios.get(
     `http://localhost:3001/v1.0/browser_profiles/${PROFILE_ID}/start?automation=1`
   );
-  console.log(response.data.automation.wsEndpoint);
   if (!response.data || !response.data.automation.wsEndpoint) {
     throw new Error("Impossible de récupérer le wsEndpoint");
   }
-  console.log("Profil démarré, wsEndpoint récupéré");
   return response.data.automation;
 }
 
@@ -50,10 +49,10 @@ export async function connectToBrowser() {
       defaultViewport: null,
     });
     await browser;
-    console.log("✅ Connexion réussie à Dolphin Anty !");
+    Logger.info("✅ Dolphin Anty connection is successful!");
     return browser;
   } catch (error) {
-    console.error("❌ Erreur de connexion au navigateur :", error);
+    console.error("❌ Error :", error);
     throw error;
   }
 }

@@ -16,7 +16,6 @@ export class DirectCommentStrategy implements ICommentStrategy {
 
   //TODO: A REFACTO POUR QUE CA FONCTIONN
   async postComment(videoLink: string, page: Page) {
-    console.log(this.comment);
 
     Logger.info("Placing the view on the comments section...");
 

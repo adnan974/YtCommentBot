@@ -17,6 +17,8 @@ import {
 } from "services/PromptTerminalService";
 import store from "store/store";
 import { randomMediumDelay } from "#utils/delay";
+import { CommentStrategyFactory } from "#lib/Bot/comments/CommentStrategyFactory";
+import { ICommentStrategy } from "#lib/Bot/comments/ICommentStrategy";
 
 async function disableUserInputFor5Seconds() {
   // 🔴 Désactiver la saisie de l'utilisateur pour éviter une entrée accidentelle
@@ -29,7 +31,7 @@ async function disableUserInputFor5Seconds() {
   const blockEnterKey = (data: Buffer) => {
     if (data.toString() === "\r") {
       // Empêcher l'effet de la touche Entrée pendant les 5 secondes
-      console.log("⏳ Touche Entrée bloquée pour 5 secondes...");
+      Logger.info("⏳ Enter touch blocked for 5secs...");
       // Ici, on ne fait rien pour bloquer l'entrée (on n'appelle pas process.stdin.pause())
     }
   };
@@ -105,22 +107,15 @@ async function main() {
     urls = await youtubeBot.getTrendingVideos(); // You'll need to implement this method
   } else {
     Logger.info(`Searching for keyword: ${preferences.keyword}`);
-    urls = await youtubeBot.searchKeyword(preferences.keyword);
+    urls = await youtubeBot.searchKeywordAndCollectLinks(preferences.keyword);
   }
 
   for (const url of urls) {
     Logger.info(`Navigating to video: ${url}`);
-    console.log(preferences);
-    if (
-      preferences.commentType === "manual" &&
-      preferences.manualCommentType === "csv"
-    ) {
-      await youtubeBot.goToVideo(url, "csv");
-    } else if (
-      preferences.commentType === "manual" &&
-      preferences.manualCommentType === "direct"
-    ) {
-      await youtubeBot.goToVideo(url, "direct", preferences.comment);
+    if (preferences.manualCommentType === "csv") {
+      await youtubeBot.goToVideoWatchInteractAndComment(url, "csv");
+    } else if (preferences.manualCommentType === "direct") {
+      await youtubeBot.goToVideoWatchInteractAndComment(url, "direct", preferences.comment);
     }
 
     await randomMediumDelay();

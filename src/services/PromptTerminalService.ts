@@ -28,18 +28,8 @@ export async function getSearchPreferences() {
     },
     {
       type: "list",
-      name: "commentType",
-      message: "💭 How would you like to comment?",
-      choices: [
-        { name: "✍️  Manual comments", value: "manual" },
-      ],
-      default: "manual",
-    },
-    {
-      type: "list",
       name: "manualCommentType",
       message: "📝 Choose your comment source:",
-      when: (answers) => answers.commentType === "manual",
       choices: [
         { name: "📄 Load from CSV file", value: "csv" },
         { name: "⌨️  Type directly", value: "direct" },
@@ -51,7 +41,6 @@ export async function getSearchPreferences() {
       name: "comment",
       message: "✨ Enter your comment:",
       when: (answers) =>
-        answers.commentType === "manual" &&
         answers.manualCommentType === "direct",
       validate: (input) => (input.trim() ? true : "❌ Comment cannot be empty"),
     },

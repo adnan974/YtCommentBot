@@ -1,7 +1,7 @@
 import store from "store/store";
 
 export async function collectLinks(page) {
-  const botData = store.getBotData(); 
+  const botData = store.getBotData();
 
   const videoData = await page.$$eval(
     "ytd-video-renderer",
@@ -41,12 +41,13 @@ export async function collectLinks(page) {
             return (
               video &&
               video.link &&
-              video.views > botData.youtube_config.minViewsFilter &&
-              video.views < botData.youtube_config.maxViewsFilter
+              video.views > (botData?.youtube_config?.minViewsFilter || 0) &&
+              video.views < (botData?.youtube_config?.maxViewsFilter || 1000000)
             );
           })
       );
-    },botData
+    },
+    botData
   );
 
   // Limiter à 50 résultats max
