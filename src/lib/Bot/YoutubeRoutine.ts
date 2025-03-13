@@ -100,9 +100,10 @@ export class YoutubeRoutine {
     await scrollToBottom(this.page);
     await randomMediumDelay();
 
-    //TODO: REVOIR LE CODE ICI IMPOSSIBLE DE CLICK SUR LE BTN
-    const comments = await this.page.$$eval(selector, async (commentElements, page) => {
-      return await Promise.all(commentElements.map(async (comment) => {
+    //TODO/ REVOIR ICI PAS POSSIBLE DE RECUP LES DOPNN2ES
+    // Récupérer les commentaires et cliquer sur les boutons "like"
+    const comments = await this.page.$$eval(selector, (commentElements) => {
+      return commentElements.map((comment) => {
         // Extraire le nom d'utilisateur
         const usernameElement = comment.querySelector("#author-text");
         const username = usernameElement
@@ -115,14 +116,32 @@ export class YoutubeRoutine {
           ? commentTextElement.textContent.trim()
           : "";
 
-        // Extraire l'élément du bouton "like" (thumbs-up)
-        const likeButton = await page.$(
-          "#like-button button"
-        );
+        return { username, commentText, comment }; // Retourner l'élément du commentaire pour le traitement dans Puppeteer
+      });
+    });
 
-        return { username, commentText, likeButton };
-      }));
-    }, this.page);
+    console.log(comments)
+    // Pour chaque commentaire, cliquer sur le bouton "like"
+    for (const { username, comment, commentText } of comments) {
+      console.log(`Processing comment by ${username}: ${commentText}`);
 
+      // Récupérer le bouton "like" du commentaire avec Puppeteer (via ElementHandle)
+      /*
+      const likeButton = await this.page.evaluateHandle((comment) => {
+        return comment.querySelector("#like-button button");
+      }, comment);
+      
+      
+      if (likeButton) {
+        await likeButton.click(); // Cliquer sur le bouton "like"
+        console.log(`Button clicked for user: ${username}`);
+      } else {
+        console.log(`Like button not found for user: ${username}`);
+      }
+        */
+    }
+
+    // Optionnel : Attendre une période de temps après chaque clic avant de passer au suivant
+    await randomMediumDelay();
   }
 }
