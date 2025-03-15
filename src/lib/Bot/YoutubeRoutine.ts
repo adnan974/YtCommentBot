@@ -10,33 +10,39 @@ import { ICommentStrategy } from "./comments/ICommentStrategy";
 import Logger from "#utils/Logger";
 import { scrollToBottom } from "#utils/scrollToBottom";
 import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelper";
+import { CommentDB } from "models";
+import { CommentStatus } from "constants/CommentStatus";
+import store from "store/store";
 
 export class YoutubeRoutine {
   private page: Page;
+  private botData;
+  private youtubeBot: YoutubeBot;
+  private youtubeVideoPageAction: YoutubeVideoPageActions;
 
   constructor(page: Page) {
+    this.botData = store.getBotData();
     this.page = page;
+    this.youtubeBot = new YoutubeBot(this.page);
+    this.youtubeVideoPageAction = new YoutubeVideoPageActions(this.page);
   }
 
   async navigateThroughtRecommendationAndWatch() {
     let url = "https://www.youtube.com/watch?v=BSUmna1rFDc";
-    const ytBot = new YoutubeBot(this.page);
-    const ytVideoPageAction = new YoutubeVideoPageActions(this.page);
-    await ytBot.goToVideoAndWaitPageToLoad(url);
+    await this.youtubeBot.goToVideoAndWaitPageToLoad(url);
 
     while (true) {
-      await ytVideoPageAction.scrollToRecommendations();
-      await ytVideoPageAction.clickOnRandomRecoVideo();
+      await this.youtubeVideoPageAction.scrollToRecommendations();
+      await this.youtubeVideoPageAction.clickOnRandomRecoVideo();
       url = await this.page.url();
-      await ytVideoPageAction.watchVideo(url);
+      await this.youtubeVideoPageAction.watchVideo(url);
     }
   }
 
   async navigateThroughtShortAndWatch() {
     let url = "https://www.youtube.com";
-    const ytBot = new YoutubeBot(this.page);
     const ytVideoPageAction = new YoutubeShortVideoPageAction(this.page);
-    await ytBot.goToVideoAndWaitPageToLoad(url);
+    await this.youtubeBot.goToVideoAndWaitPageToLoad(url);
 
     //TODO: TROP DE CLIC DE PARTOUT DANS CETTE METHODE
 
@@ -45,14 +51,12 @@ export class YoutubeRoutine {
     await ytVideoPageAction.navigateShortVideosWithArrowDown();
   }
 
-  async searchAndWatch(searchQuery: searchParam) {
-    const ytBOt = new YoutubeBot(this.page);
-    const ytVideoPageAction = new YoutubeVideoPageActions(this.page);
+  async searchAndWatch(searchQuery: searchParam, commentStrategy: ICommentStrategy) {
     const domAction = new DomAction(this.page);
 
-    await ytBOt.searchOnSearchBar(searchQuery);
+    await this.youtubeBot.searchOnSearchBar(searchQuery);
     await randomLongDelay();
-    let links: string[] = await ytBOt.scrollTOBottomAndCollectLinks();
+    let links: string[] = await this.youtubeBot.scrollTOBottomAndCollectLinks();
     links = links
       .map((link) => {
         const videoId = new URL(link).searchParams.get("v");
@@ -73,10 +77,10 @@ export class YoutubeRoutine {
         };
 
       // Cliquer sur la vidéo
-      Logger.info(`Clic on video: ${videoUrl}`);
+      Logger.info(`Click on video: ${videoUrl}`);
       await humanLikeMouseHelper.click(videoSelector);
 
-      await randomMediumDelay(); // Attendre un peu avant de continuer
+      this.watchLikeOrSubscribeAndComment(videoUrl, commentStrategy);
       // Revenir à la page précédente
       Logger.info(`Go back to search page`);
       await this.page.goBack();
@@ -90,58 +94,82 @@ export class YoutubeRoutine {
     }
   }
 
-  async findCommentByUsername(usernames: string) {
-    const ytVideoPageAction = new YoutubeVideoPageActions(this.page);
-
-    await ytVideoPageAction.goToCommentSection();
+  async findCommentByUsernameAndLike(usernames: string) {
+    await this.youtubeVideoPageAction.goToCommentSection();
     await randomMediumDelay();
     const selector = "ytd-comment-thread-renderer";
     await this.page.waitForSelector(selector, { visible: true });
+
+    //TODO A REVOIR SI Y'A BCP DE COMS
     await scrollToBottom(this.page);
     await randomMediumDelay();
 
-    //TODO/ REVOIR ICI PAS POSSIBLE DE RECUP LES DOPNN2ES
-    // Récupérer les commentaires et cliquer sur les boutons "like"
-    const comments = await this.page.$$eval(selector, (commentElements) => {
-      return commentElements.map((comment) => {
-        // Extraire le nom d'utilisateur
-        const usernameElement = comment.querySelector("#author-text");
-        const username = usernameElement
-          ? usernameElement.textContent.trim()
-          : "";
+    const commentElements = await this.page.$$(selector);
 
-        // Extraire le texte du commentaire
-        const commentTextElement = comment.querySelector("#content-text");
-        const commentText = commentTextElement
-          ? commentTextElement.textContent.trim()
-          : "";
-
-        return { username, commentText, comment }; // Retourner l'élément du commentaire pour le traitement dans Puppeteer
-      });
-    });
-
-    console.log(comments)
-    // Pour chaque commentaire, cliquer sur le bouton "like"
-    for (const { username, comment, commentText } of comments) {
-      console.log(`Processing comment by ${username}: ${commentText}`);
-
-      // Récupérer le bouton "like" du commentaire avec Puppeteer (via ElementHandle)
-      /*
-      const likeButton = await this.page.evaluateHandle((comment) => {
-        return comment.querySelector("#like-button button");
-      }, comment);
-      
-      
-      if (likeButton) {
-        await likeButton.click(); // Cliquer sur le bouton "like"
-        console.log(`Button clicked for user: ${username}`);
-      } else {
-        console.log(`Like button not found for user: ${username}`);
+    for (const comment of commentElements) {
+      const username = await this.youtubeVideoPageAction.getCommentUsername(
+        comment
+      );
+      if (username === "@" + usernames) {
+        await this.youtubeVideoPageAction.likeComment(comment);
       }
-        */
     }
+  }
 
-    // Optionnel : Attendre une période de temps après chaque clic avant de passer au suivant
+  async gotoVideoByUrlInteractAndComment(
+    videoLink: string,
+    commentStrategy: ICommentStrategy
+  ): Promise<void> {
+    //TODO : A REEMETTRE
+    /*
+    if (await this.youtubeBot.checkIfCommentExist(videoLink)) {
+      return;
+    }
+    */
+
+    await this.youtubeBot.goToVideoAndWaitPageToLoad(videoLink);
+
+
+
+    await this.watchLikeOrSubscribeAndComment(videoLink, commentStrategy);
+
+    // Ajouter un délai pour simuler un comportement humain
     await randomMediumDelay();
+  }
+
+  async watchLikeOrSubscribeAndComment(
+    videoLink: string,
+    commentStrategy: ICommentStrategy
+  ) {
+    try {
+      //TODO/ Remettre comme avant
+      //await this.youtubeVideoPageAction.watchVideo(videoLink);
+      await randomLongDelay();
+      await this.youtubeVideoPageAction.likeOrSubscribe(); // Like/Subscribe aléatoire
+
+      const shouldComment = Math.random() < 0.7; // 60% de chances de commenter
+
+      if (!shouldComment) {
+        Logger.info("Skipping comment for this video...");
+        return;
+      }
+
+      await this.youtubeVideoPageAction.browseComments();
+      await this.youtubeVideoPageAction.goToCommentSection();
+
+      await commentStrategy.postComment(videoLink, this.page);
+    } catch (e) {
+      Logger.error(
+        `Failed to interact with the video: ${(e as Error).message}`
+      );
+
+      await CommentDB.create({
+        username: this.botData.username,
+        video_url: videoLink,
+        comment_status: CommentStatus.FAILED,
+        comment: (e as Error).message,
+        botId: this.botData.id,
+      });
+    }
   }
 }

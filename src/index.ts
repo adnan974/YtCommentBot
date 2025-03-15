@@ -19,6 +19,7 @@ import store from "store/store";
 import { randomMediumDelay } from "#utils/delay";
 import { CommentStrategyFactory } from "#lib/Bot/comments/CommentStrategyFactory";
 import { ICommentStrategy } from "#lib/Bot/comments/ICommentStrategy";
+import { YoutubeRoutine } from "#lib/Bot/YoutubeRoutine";
 
 async function disableUserInputFor5Seconds() {
   // 🔴 Désactiver la saisie de l'utilisateur pour éviter une entrée accidentelle
@@ -110,14 +111,21 @@ async function main() {
     urls = await youtubeBot.searchKeywordAndCollectLinks(preferences.keyword);
   }
 
+  let commentStrategy: ICommentStrategy;
+
+  commentStrategy = CommentStrategyFactory.create(
+    preferences.manualCommentType,
+    {
+      comment: preferences.comment,
+      filePath: botData.csvCommentPath,
+    }
+  );
+
+  const youtubeRoutine = new YoutubeRoutine(pages);
+
   for (const url of urls) {
     Logger.info(`Navigating to video: ${url}`);
-    if (preferences.manualCommentType === "csv") {
-      await youtubeBot.goToVideoWatchInteractAndComment(url, "csv");
-    } else if (preferences.manualCommentType === "direct") {
-      await youtubeBot.goToVideoWatchInteractAndComment(url, "direct", preferences.comment);
-    }
-
+    await youtubeRoutine.gotoVideoByUrlInteractAndComment(url, commentStrategy);
     await randomMediumDelay();
   }
 

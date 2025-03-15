@@ -5,8 +5,10 @@ import {
   randomSmallDelay,
 } from "#utils/delay";
 import Logger from "#utils/Logger";
+import { ElementHandle } from "puppeteer";
 import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelper";
 import YoutubeApi from "./YoutubeApi";
+import YoutubeBot from "./YoutubeBot";
 
 class YoutubeVideoPageActions {
   page;
@@ -80,6 +82,7 @@ class YoutubeVideoPageActions {
 
   async goToCommentSection(): Promise<void> {
     try {
+      const ytBot = new YoutubeBot(this.page);
       Logger.info("Browsing the comments...");
 
       const sectionFound = await this.page.evaluate(() => {
@@ -191,7 +194,7 @@ class YoutubeVideoPageActions {
 
   async clickOnRandomRecoVideo() {
     const selector = "#related #items #contents";
-    
+
     await this.page.waitForSelector(selector);
     Logger.info(`Waiting for recommendation selector to load...`);
 
@@ -210,26 +213,26 @@ class YoutubeVideoPageActions {
 
   async scrollToRecommendations() {
     const recommendationsSelector = "ytd-compact-video-renderer";
-  
+
     let retries = 10; // Limite pour éviter une boucle infinie
     let found = false;
-  
+
     while (retries > 0) {
       found = await this.page.evaluate((selector) => {
         return document.querySelector(selector) !== null;
       }, recommendationsSelector);
-  
+
       if (found) break; // Si trouvé, on arrête le scroll
-  
+
       await this.page.evaluate(() => {
-        window.scrollBy(0, randomNumber(250,450)); // Scroll vers le bas par petits incréments
+        window.scrollBy(0, randomNumber(250, 450)); // Scroll vers le bas par petits incréments
       });
-  
+
       await randomSmallDelay();
-  
+
       retries--;
     }
-  
+
     if (found) {
       await this.page.evaluate((selector) => {
         const element = document.querySelector(selector);
@@ -237,67 +240,96 @@ class YoutubeVideoPageActions {
           element.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }, recommendationsSelector);
-  
+
       Logger.info("Scroll on recommendations done");
     } else {
       Logger.warn("Recommendations section not found after scrolling");
     }
   }
 
-    /**
-     * Extrait l'ID d'une vidéo YouTube à partir de son URL
-     * @param url L'URL complète de la vidéo YouTube
-     * @returns L'ID de la vidéo (ex: "LGXCaPw58v8") ou null si invalide
-     */
-    private extractVideoId(url: string): string | null {
-      const regex = /[?&]v=([^&]+)/;
-      const match = url.match(regex);
-      return match ? match[1] : null;
-    }
-  
-    async watchVideo(url: string): Promise<void> {
-      // Attendre que la balise vidéo apparaisse
-      await this.page.waitForSelector("video", { visible: true });
+  /**
+   * Extrait l'ID d'une vidéo YouTube à partir de son URL
+   * @param url L'URL complète de la vidéo YouTube
+   * @returns L'ID de la vidéo (ex: "LGXCaPw58v8") ou null si invalide
+   */
+  private extractVideoId(url: string): string | null {
+    const regex = /[?&]v=([^&]+)/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  }
 
-      const videoId = this.extractVideoId(url);
-  
-      let videoDuration = await YoutubeApi.getVideoDurationInSeconds(videoId);
-  
-      if (videoDuration > 0) {
-        if (videoDuration > 600) {
-          // 600 secondes = 10 minutes
-          const randomWatchTime = Math.floor(
-            Math.random() * (300 - 180 + 1) + 180
-          ); // Durée entre 3 et 5 minutes
-          Logger.info(
-            `Video duration too high: ${videoDuration} seconds. Watching the video for ${randomWatchTime} seconds (3-5 mins)...`
-          );
-          await delay(randomWatchTime * 1000); // Regarder entre 3 et 5 minutes
-        } else {
-          // Calculer une durée aléatoire entre 10% et 30% de la durée totale
-          const minPercentage = 0.1; // 10%
-          const maxPercentage = 0.3; // 30%
-          const randomFactor =
-            Math.random() * (maxPercentage - minPercentage) + minPercentage;
-          const watchDuration = Math.floor(videoDuration * randomFactor);
-  
-          Logger.info(`Video duration: ${videoDuration} seconds`);
-          Logger.info(
-            `Watching the video for ${watchDuration} seconds (~${Math.floor(
-              randomFactor * 100
-            )}% of the total duration)...`
-          );
-  
-          // Attendre la durée aléatoire
-          await delay(watchDuration * 1000);
-        }
-      } else {
-        Logger.warn(
-          "Could not get video duration after multiple attempts. Watching for a default 30 seconds..."
+  async watchVideo(url: string): Promise<void> {
+    // Attendre que la balise vidéo apparaisse
+    await this.page.waitForSelector("video", { visible: true });
+
+    const videoId = this.extractVideoId(url);
+
+    let videoDuration = await YoutubeApi.getVideoDurationInSeconds(videoId);
+
+    if (videoDuration > 0) {
+      if (videoDuration > 600) {
+        // 600 secondes = 10 minutes
+        const randomWatchTime = Math.floor(
+          Math.random() * (180 - 120 + 1) + 180
+        ); // Durée entre 2 et 3 minutes
+        Logger.info(
+          `Video duration too high: ${videoDuration} seconds. Watching the video for ${randomWatchTime} seconds (3-5 mins)...`
         );
-        await delay(30 * 1000); // Durée par défaut si la récupération échoue
+        await delay(randomWatchTime * 1000); // Regarder entre 3 et 5 minutes
+      } else {
+        // Calculer une durée aléatoire entre 10% et 30% de la durée totale
+        const minPercentage = 0.1; // 10%
+        const maxPercentage = 0.3; // 30%
+        const randomFactor =
+          Math.random() * (maxPercentage - minPercentage) + minPercentage;
+        const watchDuration = Math.floor(videoDuration * randomFactor);
+
+        Logger.info(`Video duration: ${videoDuration} seconds`);
+        Logger.info(
+          `Watching the video for ${watchDuration} seconds (~${Math.floor(
+            randomFactor * 100
+          )}% of the total duration)...`
+        );
+
+        // Attendre la durée aléatoire
+        await delay(watchDuration * 1000);
       }
+    } else {
+      Logger.warn(
+        "Could not get video duration after multiple attempts. Watching for a default 30 seconds..."
+      );
+      await delay(30 * 1000); // Durée par défaut si la récupération échoue
     }
+  }
+
+  async getCommentUsername(comment: ElementHandle): Promise<string> {
+    const usernameElement = await comment.$("#author-text");
+    const username = usernameElement
+      ? await usernameElement.evaluate((el) => el.textContent.trim())
+      : "";
+    return username;
+  }
+
+  async getCommentContent(comment: ElementHandle): Promise<string> {
+    const commentTextElement = await comment.$("#content-text");
+    const commentText = commentTextElement
+      ? await commentTextElement.evaluate((el) => el.textContent.trim())
+      : "";
+    return commentText;
+  }
+
+  async likeComment(comment: ElementHandle): Promise<void> {
+    const likeButtonSelector = 'button[aria-label="Unlike"]';
+
+    const isAlreadyLiked = (await this.page.$(likeButtonSelector)) !== null;
+
+    if (isAlreadyLiked) {
+      Logger.warn("comment is already liked (aria-label='Unlike')");
+    } else {
+      const likeButton = await comment.$("#like-button button");
+      await likeButton.click();
+    }
+  }
 }
 
 export default YoutubeVideoPageActions;

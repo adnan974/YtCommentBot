@@ -1,23 +1,18 @@
+import type { searchParam } from "#types/index";
 import {
   delay,
-  randomLongDelay,
-  randomMediumDelay,
-  randomSmallDelay,
+  randomSmallDelay
 } from "#utils/delay";
 import Logger from "#utils/Logger";
 import { scrollToBottom } from "#utils/scrollToBottom";
-import { CommentDB } from "models";
-import type { Page } from "puppeteer";
-import type { searchParam } from "#types/index";
 import { collectLinks } from "#utils/videos/collectLinks";
-import { ICommentStrategy } from "./comments/ICommentStrategy";
-import { CommentStrategyFactory } from "./comments/CommentStrategyFactory";
-import store from "store/store";
-import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelper";
 import { Op } from "@sequelize/core";
 import { CommentStatus } from "constants/CommentStatus";
+import { CommentDB } from "models";
+import type { Page } from "puppeteer";
+import store from "store/store";
+import { humanLikeMouseHelper } from "./HumanLikeMouseHelper/HumanLikeMouseHelper";
 import YoutubeVideoPageActions from "./YoutubeVideoPageActions";
-import YoutubeApi from "./YoutubeApi";
 
 Logger.banner("🚀 Starting Youtube BOT Application...");
 
@@ -153,69 +148,13 @@ export default class YoutubeBot {
     return false;
   }
 
-  async goToVideoWatchInteractAndComment(
-    videoLink: string,
-    commentType = "random",
-    manual: string | undefined = undefined
-  ): Promise<void> {
-    if (await this.checkIfCommentExist(videoLink)) {
-      return;
-    }
-
-    await this.goToVideoAndWaitPageToLoad(videoLink);
-
-    let commentStrategy: ICommentStrategy;
-
-    commentStrategy = CommentStrategyFactory.create(commentType, {
-      comment: manual,
-      filePath: this.botData.csvCommentPath,
-    });
-
-    await this.watchLikeOrSubscribeAndComment(videoLink, commentStrategy);
-
-    // Ajouter un délai pour simuler un comportement humain
-    await randomMediumDelay();
-  }
-
-  async watchLikeOrSubscribeAndComment(
-    videoLink: string,
-    commentStrategy: ICommentStrategy
-  ) {
-    try {
-      await this.youtubeVideoPageActions.watchVideo(videoLink);
-      await this.youtubeVideoPageActions.likeOrSubscribe(); // Like/Subscribe aléatoire
-
-      const shouldComment = Math.random() < 0.7; // 60% de chances de commenter
-
-      if (!shouldComment) {
-        Logger.info("Skipping comment for this video...");
-        return;
-      }
-
-      await this.youtubeVideoPageActions.browseComments();
-      await this.youtubeVideoPageActions.goToCommentSection();
-
-      await commentStrategy.postComment(videoLink, this.page);
-    } catch (e) {
-      Logger.error(
-        `Failed to interact with the video: ${(e as Error).message}`
-      );
-
-      await CommentDB.create({
-        username: this.botData.username,
-        video_url: videoLink,
-        comment_status: CommentStatus.FAILED,
-        comment: (e as Error).message,
-        botId: this.botData.id,
-      });
-    }
-  }
-
   async goToVideoAndWaitPageToLoad(videoLink: string) {
     Logger.info(`Navigating to video page: ${videoLink}`);
+    await this.blockClicks(this.page);
     await this.page.goto(videoLink);
 
     await delay(10000);
+    await this.unblockClicks(this.page);
   }
 
   // Search bar
@@ -229,5 +168,17 @@ export default class YoutubeBot {
     await this.page.type(selector, query.keyword);
 
     await this.page.keyboard.press("Enter");
+  }
+
+  async blockClicks(page) {
+    await page.evaluate(() => {
+      document.body.style.pointerEvents = 'none';
+    });
+  }
+
+  async unblockClicks(page) {
+    await page.evaluate(() => {
+      document.body.style.pointerEvents = 'auto';
+    });
   }
 }

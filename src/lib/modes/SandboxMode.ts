@@ -2,6 +2,8 @@ import path from "path";
 import YoutubeBot from "#lib/Bot/YoutubeBot";
 import { YoutubeRoutine } from "#lib/Bot/YoutubeRoutine";
 import { randomLongDelay } from "#utils/delay";
+import { ICommentStrategy } from "#lib/Bot/comments/ICommentStrategy";
+import { CommentStrategyFactory } from "#lib/Bot/comments/CommentStrategyFactory";
 
 class SandboxMode {
   private browser;
@@ -19,12 +21,19 @@ class SandboxMode {
     //TODO: ECRIRE LES TEST A FAIRE ICI
     // Vérifier si le commentaire existe déjà
     //await connectToBrowser()
-
+      let commentStrategy: ICommentStrategy;
+    
+      commentStrategy = CommentStrategyFactory.create(
+        "csv",
+        {
+          comment: "csv",
+          filePath: "assets/en-noob-doesnt-know-how-to-transfert-comments.csv",
+        }
+      );
+    
     const page = await this.browser.page;
     const warmer = new YoutubeRoutine(page);
-    await page.goto("https://www.youtube.com/watch?v=XvrfJBBE9Pw");
-    await randomLongDelay();
-    await warmer.findCommentByUsername("ThomasLeRelou");
+    await warmer.gotoVideoByUrlInteractAndComment("https://www.youtube.com/watch?v=XvrfJBBE9Pw", commentStrategy)
 
   }
 
